@@ -1,0 +1,62 @@
+// The playback loop. It owns only two pieces of state, `t` and `playing`; the picture is
+// recomputed from t whenever something changes (time moved, file edited, window resized).
+import { paintFrame } from '../engine/render.js';
+
+export class Player {
+  constructor(canvas, { onTick } = {}) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.onTick = onTick || (() => {});
+    this.comp = null;
+    this.t = 0;
+    this.playing = false;
+    this.loop = false;
+    this.hidden = new Set();      // layers hidden in the editor (not saved)
+    this.dirty = true;
+    this.last = null;
+    new ResizeObserver(() => this.resize()).observe(canvas.parentElement);
+    requestAnimationFrame(now => this.frame(now));
+  }
+  setComp(comp) {
+    this.comp = comp;
+    this.t = Math.min(this.t, comp.duration);
+    this.resize();
+  }
+  resize() {
+    if (!this.comp) return;
+    const box = this.canvas.parentElement.getBoundingClientRect();
+    const aspect = this.comp.width / this.comp.height;
+    // fit the frame inside the available box, keeping the composition's aspect ratio
+    let w = box.width, h = w / aspect;
+    if (h > box.height) { h = box.height; w = h * aspect; }
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    this.canvas.style.width = w + 'px';
+    this.canvas.style.height = h + 'px';
+    this.canvas.width = Math.max(2, Math.round(w * dpr));
+    this.canvas.height = Math.max(2, Math.round(h * dpr));
+    this.dirty = true;
+  }
+  seek(t) { this.t = Math.max(0, Math.min(this.comp ? this.comp.duration : 0, t)); this.dirty = true; }
+  play() { if (this.comp && this.t >= this.comp.duration) this.t = 0; this.playing = true; this.dirty = true; }
+  pause() { this.playing = false; this.dirty = true; }
+  toggle() { this.playing ? this.pause() : this.play(); }
+  replay() { this.t = 0; this.playing = true; }
+  invalidate() { this.dirty = true; }
+  frame(now) {
+    if (this.comp && this.playing && this.last !== null) {
+      this.t += Math.min(0.1, (now - this.last) / 1000);   // advance by real elapsed time (capped after a stall)
+      if (this.t >= this.comp.duration) {
+        if (this.loop) this.t = this.t % this.comp.duration;
+        else { this.t = this.comp.duration; this.playing = false; }
+      }
+      this.dirty = true;
+    }
+    this.last = now;
+    if (this.comp && this.dirty) {
+      this.dirty = false;
+      paintFrame(this.ctx, this.comp, this.t, this.canvas.width, this.canvas.height, { hidden: this.hidden });
+      this.onTick(this.t);
+    }
+    requestAnimationFrame(n => this.frame(n));
+  }
+}

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Motion Studio</title>
+<link rel="stylesheet" href="editor/style.css">
+</head>
+<body>
+<header class="top">
+  <strong class="brand">Motion Studio</strong>
+  <label class="picker">Composition
+    <select id="compSelect" aria-label="Composition"></select>
+  </label>
+  <span class="status" id="status" role="status"></span>
+</header>
+
+<main class="workspace">
+  <section class="stage-col">
+    <div class="stage-box" id="stageBox"><canvas id="stage"></canvas></div>
+    <div class="errors" id="errors" hidden></div>
+    <div class="controls">
+      <button class="btn" id="playBtn" title="Play / pause (Space)">Play</button>
+      <button class="btn" id="replayBtn" title="From the start (Home)">Replay</button>
+      <button class="btn icon" id="prevFrame" title="Previous frame (←)" aria-label="Previous frame">‹</button>
+      <button class="btn icon" id="nextFrame" title="Next frame (→)" aria-label="Next frame">›</button>
+      <input type="range" id="scrub" min="0" max="1000" step="1" value="0" aria-label="Scrub through the composition">
+      <span class="readout" id="readout">0.00 s</span>
+      <label class="loop"><input type="checkbox" id="loop"> Loop</label>
+    </div>
+  </section>
+</main>
+
+<section class="timeline" aria-label="Timeline">
+  <div class="tl-head"><h2>Timeline</h2><code>lanes are built from the compiled tracks</code></div>
+  <div id="timeline"></div>
+</section>
+
+<script type="module" src="editor/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+{
+  "name": "Northern Lights",
+  "notes": "Port of reference/northern-lights-titles.html. A 6 s title sequence: sky fades up, aurora glows drift in, a line draws outward, the title letters rise in one by one, the subtitle follows, the frame breathes, then the type fades out.",
+  "duration": 6,
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "seed": 7,
+  "background": "#000000",
+  "fonts": ["Italiana", "Jost:300"],
+  "layers": [
+    {
+      "id": "sky",
+      "type": "background",
+      "label": "Background",
+      "props": {
+        "fill": { "type": "radial", "x": 50, "y": 110, "rx": 120, "ry": 90, "stops": [["#0d1a2b", 0], ["#070b14", 0.55], ["#020306", 1]] }
+      },
+      "animate": [
+        { "prop": "opacity", "from": 0, "to": 1, "start": 0, "duration": 1, "ease": "inOutQuad" }
+      ]
+    },
+    {
+      "id": "glowA",
+      "type": "glow",
+      "label": "Glow (green)",
+      "props": { "x": 40, "y": 25, "width": 70, "height": 39.375, "color": "#5fe3b48c", "softness": 4.22 },
+      "animate": [
+        { "prop": "opacity", "from": 0, "to": 0.9, "start": 0.3, "duration": 1.7, "ease": "inOutQuad" },
+        { "prop": "dx", "wave": { "amp": 4.2, "period": 8.976 } },
+        { "prop": "dy", "wave": { "amp": 1.575, "period": 12.566, "phase": 0.25 } }
+      ]
+    },
+    {
+      "id": "glowB",
+      "type": "glow",
+      "label": "Glow (violet)",
+      "props": { "x": 65, "y": 40, "width": 70, "height": 39.375, "color": "#7f72f273", "softness": 4.22 },
+      "animate": [
+        { "prop": "opacity", "from": 0, "to": 0.8, "start": 0.3, "duration": 1.7, "ease": "inOutQuad" },
+        { "prop": "dx", "wave": { "amp": -4.2, "period": 8.976 } },
+        { "prop": "dy", "wave": { "amp": -0.945, "period": 12.566, "phase": 0.25 } }
+      ]
+    },
+    {
+      "id": "content",
+      "type": "group",
+      "label": "Fade out",
+      "animate": [
+        { "prop": "opacity", "from": 1, "to": 0, "start": 5.5, "duration": 0.5, "ease": "inQuad" }
+      ],
+      "children": [
+        {
+          "id": "composition",
+          "type": "group",
+          "label": "Hold",
+          "animate": [
+            { "prop": "scale", "from": 1, "to": 1.015, "start": 3.6, "duration": 1.9, "ease": "inOutQuad" }
+          ],
+          "children": [
+            {
+              "id": "rule",
+              "type": "line",
+              "label": "Line",
+              "props": { "y": 54.06, "length": 46, "thickness": 0.127, "color": "#5fe3b4", "origin": "center" },
+              "animate": [
+                { "prop": "draw", "from": 0, "to": 1, "start": 0.8, "duration": 1.2, "ease": "inOutQuad" }
+              ]
+            },
+            {
+              "id": "title",
+              "type": "text",
+              "label": "Title",
+              "text": "NORTHERN LIGHTS",
+              "split": "letters",
+              "stagger": 0.06,
+              "props": {
+                "y": 43.56, "size": 7.2, "font": "Italiana", "color": "#e8eef2", "letterSpacing": 0.16,
+                "shadowColor": "#5fe3b440", "shadowBlur": 2
+              },
+              "animate": [
+                { "prop": "opacity", "from": 0, "to": 1, "start": 1.5, "duration": 0.7, "ease": "outCubic" },
+                { "prop": "dy", "from": 4.32, "to": 0, "start": 1.5, "duration": 0.7, "ease": "outCubic" },
+                { "prop": "blur", "from": 0.633, "to": 0, "start": 1.5, "duration": 0.7, "ease": "outCubic" }
+              ]
+            },
+            {
+              "id": "subtitle",
+              "type": "text",
+              "label": "Subtitle",
+              "text": "A SHORT FILM",
+              "props": { "y": 60.49, "size": 1.7, "font": "Jost", "weight": 300, "color": "#8794a3", "letterSpacing": 0.5 },
+              "animate": [
+                { "prop": "opacity", "from": 0, "to": 1, "start": 2.8, "duration": 0.8, "ease": "outCubic" },
+                { "prop": "dy", "from": 1.477, "to": 0, "start": 2.8, "duration": 0.8, "ease": "outCubic" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
