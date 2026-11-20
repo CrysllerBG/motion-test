@@ -18,6 +18,7 @@ export default {
   paint(ctx, P, env) {
     const { W, H, U } = env;
     const w = P.width * U, h = P.height * U;
+    if (w <= 0.01 || (P.shape === 'rect' && h <= 0.01)) return;   // zero size draws nothing (no stray outline)
     ctx.translate(P.x / 100 * W, P.y / 100 * H);
     const path = new Path2D();
     let perimeter;
