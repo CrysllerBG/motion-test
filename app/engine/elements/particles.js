@@ -6,9 +6,9 @@ import { rgba } from '../color.js';
 //
 // Presets set sensible motion; any prop you set overrides the preset.
 export const PRESETS = {
-  embers:   { color: '#ff9a3c', size: 0.25, speedY: -9,  speedX: 0,  spreadX: 2,   sway: 0.8, life: 2.6, gravity: 0,  twinkle: 0,   blend: 'lighter' },
+  embers:   { color: '#ffa94d', size: 0.4, speedY: -9,  speedX: 0,  spreadX: 2,   sway: 0.8, life: 2.6, gravity: 0,  twinkle: 0,   blend: 'lighter' },
   dust:     { color: '#c8b49a', size: 0.35, speedY: -0.6, speedX: 0.4, spreadX: 1, sway: 0.6, life: 6,   gravity: 0,  twinkle: 0,   blend: 'screen' },
-  snow:     { color: '#ffffff', size: 0.22, speedY: 6,   speedX: 0.5, spreadX: 1,  sway: 1.2, life: 9,   gravity: 0,  twinkle: 0,   blend: 'normal' },
+  snow:     { color: '#ffffff', size: 0.3, speedY: 6,   speedX: 0.5, spreadX: 1,  sway: 1.2, life: 9,   gravity: 0,  twinkle: 0,   blend: 'normal' },
   sparkles: { color: '#fff2c4', size: 0.3,  speedY: 0,   speedX: 0,  spreadX: 0,   sway: 0,   life: 1.6, gravity: 0,  twinkle: 1,   blend: 'lighter' }
 };
 const cache = new WeakMap();

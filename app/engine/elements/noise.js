@@ -26,15 +26,15 @@ function fbm(w, h, seed, freqX, freqY, octaves) {
 function texture(kind, color, seed) {
   const key = `${kind}|${color}|${seed}`;
   if (cache.has(key)) return cache.get(key);
-  const w = kind === 'grain' ? 512 : 384, h = Math.round(w * 9 / 16);
-  const n = kind === 'grain' ? null : fbm(w, h, seed, kind === 'paper' ? 0.04 : 0.12, kind === 'paper' ? 0.16 : 0.12, 4);
+  const w = kind === 'grain' ? 512 : 640, h = Math.round(w * 9 / 16);
+  const n = kind === 'grain' ? null : fbm(w, h, seed, kind === 'paper' ? 0.05 : 0.09, kind === 'paper' ? 0.22 : 0.09, 5);
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
   const g = cv.getContext('2d'), img = g.createImageData(w, h), rng = mulberry(seed);
   const [r, gg, b] = parseColor(color);
   for (let i = 0; i < w * h; i++) {
     let a;
     if (kind === 'grain') a = rng();                                   // independent speckle per pixel
-    else a = Math.max(0, Math.min(1, (n[i] - 0.38) * 2.2));            // blotches above a threshold
+    else a = Math.max(0, Math.min(1, (n[i] - 0.45) * (kind === 'paper' ? 1.6 : 2.4)));  // stains/pits where the noise is high
     img.data[i * 4] = r; img.data[i * 4 + 1] = gg; img.data[i * 4 + 2] = b; img.data[i * 4 + 3] = a * 255;
   }
   g.putImageData(img, 0, 0);
