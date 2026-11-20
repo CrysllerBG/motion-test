@@ -1,0 +1,1003 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Dungeon Roller Trailer v2</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Jost:wght@400;500&family=JetBrains+Mono&display=swap">
+<style>
+/* Layout: a 16:9 dungeon stage (canvas world + SVG/HTML overlays), playback controls, then track lanes that mirror the code */
+:root {
+  --night: #0b0907;
+  --panel: #14110d;
+  --rule: #2b241c;
+  --ink: #efe6d4;
+  --muted: #9b8d78;
+  --ember: #e0873a;
+  --gold: #d6b062;
+  --display: "Uncial Antiqua", "Palatino Linotype", Georgia, serif;
+  --script: "IM Fell English", "Palatino Linotype", Georgia, serif;
+  --caps: "IM Fell English SC", "Palatino Linotype", Georgia, serif;
+  --ui: "Jost", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--night); color: var(--ink); font-family: var(--ui); font-size: 15px; line-height: 1.55; }
+.wrap {
+  max-width: 1000px; margin: 0 auto;
+  padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 18px;
+}
+
+/* ---------- Stage ---------- */
+.stage {
+  position: relative; width: 100%; max-width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000; overflow: hidden; border-radius: 6px;
+  container-type: inline-size; isolation: isolate;
+}
+.world { position: absolute; inset: 0; }
+.layer { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.load-error { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 0 10%; text-align: center; color: var(--muted); font-size: 15px; }
+svg.tex { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* Narration scroll */
+.scroll {
+  position: absolute; left: 50%; top: 82%;
+  width: 58cqw; height: 6.6cqw;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+}
+.scroll-paper {
+  position: absolute; inset: 0; overflow: hidden;
+  box-shadow: inset 0 0 1.4cqw rgba(70, 34, 10, .8);
+}
+.line {
+  position: absolute; left: 50%; top: 50%; margin: 0;
+  width: 100%; text-align: center; white-space: nowrap;
+  font-family: var(--script); font-style: italic;
+  font-size: 2.9cqw; color: #2b1a0d;
+  opacity: 0;
+}
+.rod {
+  position: absolute; top: -1cqw; width: 1.5cqw; height: 8.6cqw;
+  transform: translateX(-50%);
+  border-radius: .5cqw;
+  background: linear-gradient(90deg, #2a170b, #8a5a31 45%, #5a371b 70%, #22130a);
+  box-shadow: 0 .3cqw .8cqw rgba(0,0,0,.6);
+}
+
+/* Title banner */
+.banner-pos {
+  position: absolute; left: 50%; top: 68%;
+  width: 66cqw; height: 11.5cqw;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 .8cqw 1.4cqw rgba(0,0,0,.7));
+}
+.banner-clip { position: absolute; inset: 0; clip-path: inset(-10% 50% -10% 50%); }
+.banner {
+  position: absolute; inset: 0; overflow: hidden;
+  clip-path: polygon(0 0, 100% 0, 95.5% 50%, 100% 100%, 0 100%, 4.5% 50%);
+  display: grid; place-items: center;
+}
+.banner::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  box-shadow: inset 0 0 1.8cqw rgba(80, 38, 10, .75);
+}
+.title {
+  position: relative; margin: 0;
+  font-family: var(--display); font-weight: 400;
+  font-size: 5.6cqw; line-height: 1; letter-spacing: .04em;
+  color: #2a170c; opacity: 0; white-space: nowrap;
+}
+.rubric { color: #9c1f17; }
+.flourish { position: absolute; width: 5.4cqw; height: 5.4cqw; overflow: visible; }
+.flourish path { fill: none; stroke: #3d2413; stroke-width: 1.3; stroke-linecap: round; }
+.flourish.tl { top: 9%;  left: 7.5%; }
+.flourish.tr { top: 9%;  right: 7.5%; transform: scaleX(-1); }
+.flourish.bl { bottom: 9%; left: 7.5%; transform: scaleY(-1); }
+.flourish.br { bottom: 9%; right: 7.5%; transform: scale(-1, -1); }
+
+.tagline, .coming {
+  position: absolute; left: 50%; margin: 0; white-space: nowrap;
+  transform: translate(-50%, -50%); opacity: 0;
+}
+.tagline {
+  top: 84%;
+  font-family: var(--script); font-style: italic; font-size: 2.9cqw;
+  color: #ecd7a6; text-shadow: 0 0 1.2cqw rgba(224, 135, 58, .55);
+}
+.coming {
+  top: 91.5%;
+  font-family: var(--caps); font-size: 1.7cqw; letter-spacing: .42em; padding-left: .42em;
+  color: #bba47b;
+}
+
+/* Iron gate + stone lintel */
+.gate { position: absolute; inset: 0; will-change: transform; }
+.gate svg { width: 100%; height: 100%; display: block; }
+.lintel {
+  position: absolute; left: 0; right: 0; top: 0; height: 13%;
+  box-shadow: 0 .6cqw 1.4cqw rgba(0,0,0,.85);
+  display: grid; place-items: center;
+}
+.lintel::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 22%, rgba(0,0,0,.55) 22% 22.25%, transparent 22.25% 77.75%, rgba(0,0,0,.55) 77.75% 78%, transparent 78%),
+    linear-gradient(180deg, rgba(255,230,190,.08), transparent 30%, transparent 80%, rgba(0,0,0,.5));
+}
+.lintel-out { position: relative; }
+.inscription {
+  margin: 0;
+  font-family: var(--caps); font-size: 2.3cqw; letter-spacing: .55em;
+  color: #241f1b;
+  text-shadow: 0 .12cqw 0 rgba(255, 226, 180, .3), 0 -.08cqw 0 rgba(0,0,0,.7);
+  opacity: 0; white-space: nowrap;
+}
+.flash {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: radial-gradient(60% 70% at 50% 45%, rgba(255, 214, 150, .9), rgba(255, 140, 60, .35) 45%, transparent 75%);
+  mix-blend-mode: screen;
+}
+.black { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+.replay-overlay {
+  position: absolute; right: 2.5cqw; bottom: 2.5cqw;
+  font: 500 13px/1 var(--ui); letter-spacing: .12em; text-transform: uppercase;
+  color: var(--ink); background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.2); border-radius: 999px;
+  padding: 10px 16px; cursor: pointer;
+}
+
+/* ---------- Controls ---------- */
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+button.ctl {
+  font: 500 13px/1 var(--ui); letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink); background: var(--panel);
+  border: 1px solid var(--rule); border-radius: 4px;
+  padding: 10px 14px; cursor: pointer; min-width: 84px;
+}
+button.ctl:hover, .replay-overlay:hover { border-color: var(--ember); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+#scrub { flex: 1 1 220px; min-width: 0; accent-color: var(--ember); }
+.readout { font-family: var(--mono); font-size: 13px; color: var(--gold); font-variant-numeric: tabular-nums; min-width: 10ch; text-align: right; }
+
+/* ---------- Timeline lanes ---------- */
+.lanes-card { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 16px; display: grid; gap: 10px; }
+.lanes-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.lanes-head h2 { margin: 0; font: 500 12px/1.2 var(--ui); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.lanes-head code { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.lanes { --label: 92px; --gap: 12px; position: relative; display: grid; gap: 6px; }
+.lane { display: grid; grid-template-columns: var(--label) 1fr; gap: var(--gap); align-items: center; }
+.lane-name { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.track { position: relative; height: 14px; background: rgba(255,255,255,.03); border-radius: 2px; }
+.seg {
+  position: absolute; top: 0; bottom: 0; min-width: 3px;
+  background: rgba(224,135,58,.2); border: 1px solid rgba(224,135,58,.4); border-radius: 2px;
+}
+.seg.on { background: rgba(224,135,58,.65); }
+.seg.cue { background: rgba(214,176,98,.35); border-color: rgba(214,176,98,.7); }
+.seg.cue.on { background: rgba(255,214,140,.95); }
+button.ctl.sound[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
+button.ctl:disabled { opacity: .5; cursor: not-allowed; }
+.ticks { display: grid; grid-template-columns: var(--label) 1fr; gap: var(--gap); }
+.tick-row { position: relative; height: 16px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.tick-row span { position: absolute; transform: translateX(-50%); font-variant-numeric: tabular-nums; }
+.tick-row span:first-child { transform: none; }
+.tick-row span:last-child { transform: translateX(-100%); }
+.playhead {
+  position: absolute; top: -4px; bottom: -4px; width: 1px;
+  background: var(--gold); box-shadow: 0 0 6px var(--gold);
+  left: calc(var(--label) + var(--gap) + (100% - var(--label) - var(--gap)) * var(--f, 0));
+  pointer-events: none;
+}
+.note { margin: 0; max-width: 68ch; color: var(--muted); }
+.note strong { color: var(--ink); font-weight: 500; }
+.note code { font-family: var(--mono); font-size: 13px; color: var(--ink); }
+@media (max-width: 480px) {
+  .lanes { --label: 74px; --gap: 8px; }
+  .lane-name { font-size: 12px; }
+}
+</style>
+
+<!-- Shared SVG filters: parchment and stone are generated from noise, no image files -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="paperTex" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.05" numOctaves="4" seed="8" result="fib"></feTurbulence>
+      <feColorMatrix in="fib" type="matrix" values="0 0 0 0 0.42  0 0 0 0 0.27  0 0 0 0 0.12  1.3 0 0 0 -0.5" result="stain"></feColorMatrix>
+      <feComposite in="stain" in2="SourceGraphic" operator="atop"></feComposite>
+    </filter>
+    <filter id="stoneTex" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="4" seed="3" result="n"></feTurbulence>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.08  0 0 0 0 0.07  0 0 0 0 0.06  1.5 0 0 0 -0.55" result="pits"></feColorMatrix>
+      <feComposite in="pits" in2="SourceGraphic" operator="atop"></feComposite>
+    </filter>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <div class="stage" id="stage">
+    <div class="world" id="world">
+      <canvas id="gl" class="layer" aria-label="Torch-lit dungeon wall with a tumbling twenty-sided die, rendered in 3D"></canvas>
+      <canvas id="fx" class="layer" aria-hidden="true"></canvas>
+
+      <div class="scroll" id="scroll">
+        <div class="scroll-paper" id="scrollPaper">
+          <svg class="tex" preserveAspectRatio="none"><rect width="100%" height="100%" fill="#d6bf93" filter="url(#paperTex)"></rect></svg>
+          <p class="line" id="line1">Every door is a gamble.</p>
+          <p class="line" id="line2">Every corridor, a roll of fate.</p>
+        </div>
+        <div class="rod" id="rodL"></div>
+        <div class="rod" id="rodR"></div>
+      </div>
+
+      <div class="banner-pos">
+        <div class="banner-clip" id="bannerClip">
+          <div class="banner" id="banner">
+            <svg class="tex" preserveAspectRatio="none"><rect width="100%" height="100%" fill="#dcc596" filter="url(#paperTex)"></rect></svg>
+            <h1 class="title" id="title"><span class="rubric">D</span>ungeon <span class="rubric">R</span>oller</h1>
+          </div>
+        </div>
+      </div>
+
+      <p class="tagline" id="tagline">Fortune favours the bold</p>
+      <p class="coming" id="coming">Coming soon</p>
+
+      <div class="gate" id="gate"><svg viewBox="0 0 160 90" preserveAspectRatio="none" id="gateSvg" aria-hidden="true"></svg></div>
+
+      <div class="lintel" id="lintel">
+        <svg class="tex" preserveAspectRatio="none"><rect width="100%" height="100%" fill="#625a50" filter="url(#stoneTex)"></rect></svg>
+        <div class="lintel-out" id="lintelOut"><p class="inscription" id="inscription">Beneath the forgotten kingdom…</p></div>
+      </div>
+
+      <div class="flash" id="flash"></div>
+    </div>
+    <div class="black" id="black"></div>
+    <button class="replay-overlay" id="replayOverlay" hidden>Replay</button>
+  </div>
+
+  <div class="controls">
+    <button class="ctl" id="playBtn">Pause</button>
+    <button class="ctl" id="replayBtn">Replay</button>
+    <button class="ctl sound" id="soundBtn" aria-pressed="false">Sound off</button>
+    <input type="range" id="scrub" min="0" max="15000" step="10" value="0" aria-label="Scrub through the trailer">
+    <span class="readout" id="readout">t = 0.00 s</span>
+  </div>
+
+  <section class="lanes-card" aria-label="Timeline">
+    <div class="lanes-head">
+      <h2>Timeline</h2>
+      <code>tracks write numbers · Three.js and Tone.js read them</code>
+    </div>
+    <div class="lanes" id="lanes"><div class="playhead" id="playhead"></div></div>
+    <div class="ticks"><span></span><div class="tick-row" id="ticks"></div></div>
+  </section>
+
+  <p class="note"><strong>Turn the sound on</strong>, then press Replay. Every sound is synthesized live by Tone.js from oscillators and filtered noise, with no audio files. The die, the wall, the torchlight and the shadows are now rendered by Three.js, while the gate, scroll and banner are the same HTML and SVG as before. The gold marks in the Sound lane are the cues: each one fires when the playhead crosses it during playback, so scrubbing stays silent.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js"></script>
+<script>
+/* =====================================================================
+   Dungeon Roller, v2
+   Same engine and script as v1. What changed:
+   • Three.js renders the wall, the lighting, the shadows and the D20
+   • Tone.js synthesizes every sound live (no audio files)
+   • A thin 2D canvas on top still draws flames, embers and dust
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+
+if (!window.THREE) {
+  $('stage').insertAdjacentHTML('beforeend', '<p class="load-error">Three.js could not load, so the 3D scene can’t start. Check your connection and reload the page.</p>');
+  throw new Error('THREE missing');
+}
+
+/* =====================================================================
+   1. EASING + ENGINE  (unchanged from v1)
+   ===================================================================== */
+const ease = {
+  linear:    p => p,
+  outCubic:  p => 1 - Math.pow(1 - p, 3),
+  inOutQuad: p => p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2,
+  inQuad:    p => p * p,
+  outBounce: p => {
+    const n = 7.5625, d = 2.75;
+    if (p < 1 / d) return n * p * p;
+    if (p < 2 / d) return n * (p -= 1.5 / d) * p + 0.75;
+    if (p < 2.5 / d) return n * (p -= 2.25 / d) * p + 0.9375;
+    return n * (p -= 2.625 / d) * p + 0.984375;
+  }
+};
+const clamp01 = x => Math.min(Math.max(x, 0), 1);
+
+const DURATION = 15;
+const scene = {};
+const tracks = [];
+function track(group, key, start, duration, easing) {
+  tracks.push({ group, key, start, duration, easing });
+  scene[key] = 0;
+}
+function evaluate(t) {
+  for (const tr of tracks) scene[tr.key] = tr.easing(clamp01((t - tr.start) / tr.duration));
+}
+
+/* =====================================================================
+   2. THE SCRIPT  (identical timings to v1)
+   ===================================================================== */
+track('Torches',     'torchL',       0.2, 1.2,  ease.linear);
+track('Torches',     'torchR',       0.6, 1.2,  ease.linear);
+track('D20',         'diceIn',       0.8, 2.0,  ease.inOutQuad);
+track('Inscription', 'lintelIn',     1.6, 1.0,  ease.outCubic);
+track('Gate',        'gateRise',     2.6, 1.8,  ease.inOutQuad);
+track('Scroll',      'scrollOpen',   4.6, 0.6,  ease.outCubic);
+track('Inscription', 'lintelOut',    5.0, 0.8,  ease.inOutQuad);
+track('Scroll',      'line1',        5.0, 0.6,  ease.outCubic);
+track('Scroll',      'line1Out',     6.9, 0.4,  ease.inQuad);
+track('Scroll',      'line2',        7.3, 0.6,  ease.outCubic);
+track('Scroll',      'scrollClose',  9.0, 0.4,  ease.inQuad);
+track('D20',         'drop',         9.3, 0.5,  ease.inQuad);
+track('Impact',      'impact',       9.8, 1.0,  ease.linear);
+track('D20',         'glow20',       9.8, 0.6,  ease.outCubic);
+track('D20',         'dieDim',      10.9, 1.0,  ease.inOutQuad);
+track('Title',       'banner',      10.9, 0.5,  ease.outCubic);
+track('Title',       'stamp',       11.3, 0.3,  ease.outCubic);
+track('Title',       'flourish',    11.5, 1.2,  ease.inOutQuad);
+track('Tagline',     'tagline',     12.9, 0.8,  ease.outCubic);
+track('Tagline',     'coming',      13.5, 0.6,  ease.outCubic);
+track('Gate',        'gateSlam',    14.0, 0.55, ease.outBounce);
+track('Impact',      'slamShake',   14.2, 0.6,  ease.linear);
+track('Fade',        'fadeOut',     14.5, 0.5,  ease.inOutQuad);
+
+function mulberry(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/* Torch behaviour (unchanged) */
+function flicker(t, seed) {
+  return 0.82 + 0.07 * Math.sin(t * 11.3 + seed) + 0.05 * Math.sin(t * 23.7 + seed * 2.1)
+       + 0.04 * Math.sin(t * 5.1 + seed * 3.7) + 0.03 * Math.sin(t * 41.9 + seed * 1.3);
+}
+function ignite(p) {
+  if (p <= 0) return 0;
+  if (p >= 1) return 1;
+  return p < 0.65 ? p * (Math.sin(p * 38) > 0.2 ? 1 : 0.35) : p;
+}
+function torchLevels(t) {
+  const L = ignite(scene.torchL) * flicker(t, 1);
+  const R = ignite(scene.torchR) * flicker(t, 4);
+  return { L, R, avg: (L + R) / 2 };
+}
+const flashAmount = () => (scene.impact > 0 && scene.impact < 1) ? Math.pow(1 - scene.impact, 4) : 0;
+
+/* The tumble (unchanged): remaining angle reaches 0 exactly at LAND */
+const LAND = 9.8, STEP = 0.001, NSTEP = Math.round(LAND / STEP);
+function spinSpeed(t) {
+  if (t < 7) return 0.8;
+  if (t < 9.3) return 0.8 + 6.2 * ease.inOutQuad((t - 7) / 2.3);
+  return 7;
+}
+const cum = new Float64Array(NSTEP + 1);
+for (let i = 0; i < NSTEP; i++) cum[i + 1] = cum[i] + spinSpeed(i * STEP) * STEP;
+function remainingAngle(t) {
+  if (t >= LAND) return 0;
+  if (t <= 0) return cum[NSTEP];
+  const x = t / STEP, i = Math.floor(x);
+  return cum[NSTEP] - (cum[i] + (cum[i + 1] - cum[i]) * (x - i));
+}
+
+/* =====================================================================
+   3. THREE.JS: renderer, camera, room
+   In v1 we projected points and shaded faces by hand. Three.js now does
+   that, plus things that would take thousands of lines: real point and
+   spot lights, soft shadows, glossy clear-coat reflections, tone mapping.
+   ===================================================================== */
+const stage = $('stage');
+const glCanvas = $('gl');
+const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true });
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+
+const room = new THREE.Scene();
+room.background = new THREE.Color(0x000000);
+const camera = new THREE.PerspectiveCamera(35, 16 / 9, 0.1, 60);
+camera.position.set(0, 0, 7);
+camera.lookAt(0, 0, 0);
+camera.updateMatrixWorld();
+
+/* --- The wall: the same procedural bricks as v1, now a texture with a bump map,
+       so torchlight grazing across it catches the mortar lines --- */
+function makeWallCanvas(w, h) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'), rng = mulberry(21);
+  g.fillStyle = '#14110e'; g.fillRect(0, 0, w, h);
+  const rows = 12, rh = h / rows, m = Math.max(2, h * 0.004);
+  const rgb = (v, gk, bk) => `rgb(${Math.round(v)},${Math.round(v * gk)},${Math.round(v * bk)})`;
+  for (let r = 0; r < rows; r++) {
+    let x = -rng() * w * 0.1;
+    while (x < w) {
+      const bw = w * (0.08 + rng() * 0.07), v = 92 + rng() * 50, y0 = r * rh;
+      const grd = g.createLinearGradient(0, y0, 0, y0 + rh);
+      grd.addColorStop(0, rgb(v + 20, 0.93, 0.84));
+      grd.addColorStop(1, rgb(v - 18, 0.92, 0.82));
+      g.fillStyle = grd; g.fillRect(x + m, y0 + m, bw - 2 * m, rh - 2 * m);
+      for (let k = 0; k < 40; k++) {
+        const s = 1 + rng() * 3;
+        g.fillStyle = rng() < 0.55 ? 'rgba(0,0,0,0.28)' : 'rgba(255,240,220,0.1)';
+        g.fillRect(x + m + rng() * (bw - 2 * m), y0 + m + rng() * (rh - 2 * m), s, s);
+      }
+      x += bw;
+    }
+  }
+  return c;
+}
+const wallTex = new THREE.CanvasTexture(makeWallCanvas(2048, 1170));
+wallTex.encoding = THREE.sRGBEncoding;
+wallTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+const wall = new THREE.Mesh(
+  new THREE.PlaneGeometry(14, 8),
+  new THREE.MeshStandardMaterial({ map: wallTex, bumpMap: wallTex, bumpScale: 0.05, roughness: 0.95, metalness: 0 })
+);
+wall.position.z = -2.5;
+wall.receiveShadow = true;
+room.add(wall);
+
+/* --- Lights --- */
+const ambient = new THREE.AmbientLight(0x2a1a10, 0);
+room.add(ambient);
+
+// Two torches on the wall: warm point lights whose brightness follows the flicker
+const TORCH3 = [new THREE.Vector3(-4.3, -0.1, -2.2), new THREE.Vector3(4.3, -0.1, -2.2)];
+const torchLights = TORCH3.map(p => {
+  const l = new THREE.PointLight(0xff9a4d, 0, 11, 2);
+  l.position.set(p.x, p.y + 0.45, p.z + 0.3);
+  room.add(l);
+  return l;
+});
+
+// A warm key light from the front-left. The torches sit behind the die, so
+// without this the side facing us would be in shadow. It also throws the
+// die's shadow onto the wall, which sells the depth.
+const key = new THREE.SpotLight(0xffc996, 0, 22, 0.34, 0.9, 1);
+key.position.set(-3.2, 3.4, 6.5);
+key.target.position.set(0, 0, 0);
+key.castShadow = true;
+key.shadow.mapSize.set(1024, 1024);
+key.shadow.bias = -0.0006;
+key.shadow.camera.near = 2;
+key.shadow.camera.far = 20;
+room.add(key, key.target);
+
+// A cool rim light from behind-right separates the die's edges from the dark wall
+const rim = new THREE.DirectionalLight(0x6f86c8, 0);
+rim.position.set(3, 3, -4);
+room.add(rim);
+
+// The impact flash is a real light now: it lights the die and the wall for a moment
+const impactLight = new THREE.PointLight(0xffd29a, 0, 9, 2);
+impactLight.position.set(0, -0.2, 2.6);
+room.add(impactLight);
+
+/* =====================================================================
+   4. THE D20
+   Three.js gives us the icosahedron geometry. Our job: decide which
+   number goes on which face, paint the numbers into a texture, and
+   point each face's texture coordinates (UVs) at its number.
+   ===================================================================== */
+const dieGeo = new THREE.IcosahedronGeometry(1, 0);        // 20 faces × 3 vertices, flat-shaded
+const pos = dieGeo.attributes.position;
+const FACE_COUNT = pos.count / 3;
+const V = i => new THREE.Vector3().fromBufferAttribute(pos, i);
+
+const faces = [];
+for (let f = 0; f < FACE_COUNT; f++) {
+  const a = V(3 * f), b = V(3 * f + 1), c = V(3 * f + 2);
+  const centroid = a.clone().add(b).add(c).divideScalar(3);
+  const n = b.clone().sub(a).cross(c.clone().sub(a));
+  faces.push({ a, b, c, normal: centroid.clone().normalize(), ccw: n.dot(centroid) > 0, num: 0 });
+}
+// Opposite faces sum to 21, like a real die. Face 0 becomes the 20.
+const opposite = f => faces.findIndex(g => g !== f && g.normal.dot(f.normal) < -0.999);
+faces[0].num = 20; faces[opposite(faces[0])].num = 1;
+let nextNum = 2;
+for (const f of faces) {
+  if (f.num) continue;
+  f.num = nextNum; faces[opposite(f)].num = 21 - nextNum; nextNum++;
+}
+
+// Texture atlas: 5 × 4 square cells, one number per cell
+const COLS = 5, ROWS = 4, CELL = 256;
+const TRI = { top: [0.5, 0.92], bl: [0.06, 0.17], br: [0.94, 0.17] };   // triangle inside a cell (UV units, y up)
+const uv = new Float32Array(pos.count * 2);
+faces.forEach((f, i) => {
+  const col = i % COLS, row = Math.floor(i / COLS);
+  const toUV = ([x, y]) => [(col + x) / COLS, 1 - (row + 1 - y) / ROWS];
+  // Vertex a always gets the triangle's top corner, so every number has a known "up".
+  const order = f.ccw ? [TRI.top, TRI.bl, TRI.br] : [TRI.top, TRI.br, TRI.bl];
+  order.forEach((pt, k) => { const [u, v] = toUV(pt); uv[(3 * i + k) * 2] = u; uv[(3 * i + k) * 2 + 1] = v; });
+});
+dieGeo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+
+const colorCv = document.createElement('canvas'), glowCv = document.createElement('canvas');
+colorCv.width = glowCv.width = COLS * CELL;
+colorCv.height = glowCv.height = ROWS * CELL;
+function drawAtlas() {
+  const g = colorCv.getContext('2d'), e = glowCv.getContext('2d'), rng = mulberry(5);
+  g.fillStyle = '#7d1016'; g.fillRect(0, 0, colorCv.width, colorCv.height);
+  // Marbled resin: soft darker and lighter swirls
+  for (let k = 0; k < 160; k++) {
+    const x = rng() * colorCv.width, y = rng() * colorCv.height, r = 20 + rng() * 90;
+    const grd = g.createRadialGradient(x, y, 0, x, y, r);
+    const tone = rng() < 0.5 ? '40,0,4' : '170,40,40';
+    grd.addColorStop(0, `rgba(${tone},0.22)`); grd.addColorStop(1, `rgba(${tone},0)`);
+    g.fillStyle = grd; g.fillRect(x - r, y - r, 2 * r, 2 * r);
+  }
+  e.fillStyle = '#000'; e.fillRect(0, 0, glowCv.width, glowCv.height);
+  g.textAlign = e.textAlign = 'center';
+  g.textBaseline = e.textBaseline = 'middle';
+  const font = '96px "IM Fell English", "Palatino Linotype", Georgia, serif';
+  faces.forEach((f, i) => {
+    const col = i % COLS, row = Math.floor(i / COLS);
+    const cx = (col + 0.5) * CELL, cy = (row + 1 - 0.42) * CELL;   // triangle centroid
+    const label = f.num === 6 || f.num === 9 ? f.num + '.' : String(f.num);
+    g.font = e.font = font;
+    g.fillStyle = 'rgba(20,0,2,0.65)'; g.fillText(label, cx + 3, cy + 4);   // engraved shadow
+    g.fillStyle = '#e8c477'; g.fillText(label, cx, cy);                     // gold infill
+    // Emission map: every number glows faintly, the 20 glows fully
+    e.fillStyle = f.num === 20 ? '#ffc770' : '#3a2a12';
+    e.fillText(label, cx, cy);
+  });
+}
+drawAtlas();
+const colorTex = new THREE.CanvasTexture(colorCv);
+colorTex.encoding = THREE.sRGBEncoding;
+colorTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+const glowTex = new THREE.CanvasTexture(glowCv);
+glowTex.encoding = THREE.sRGBEncoding;
+// Redraw the numbers once the period typeface has actually loaded
+if (document.fonts && document.fonts.load) {
+  document.fonts.load(`96px "IM Fell English"`).then(() => { drawAtlas(); colorTex.needsUpdate = true; glowTex.needsUpdate = true; }).catch(() => {});
+}
+
+const dieMat = new THREE.MeshPhysicalMaterial({
+  map: colorTex,
+  emissive: 0xffffff, emissiveMap: glowTex, emissiveIntensity: 0.4,
+  roughness: 0.42, metalness: 0,
+  clearcoat: 1, clearcoatRoughness: 0.12          // the glossy lacquer layer of a resin die
+});
+const die = new THREE.Mesh(dieGeo, dieMat);
+die.castShadow = true;
+die.scale.setScalar(0.95);
+room.add(die);
+
+/* Landing pose: turn face 20 toward the camera (+z) with its top corner up.
+   Build a basis from the face (right, up, forward) and invert it.        */
+const f20 = faces[0];
+const fwd = f20.normal.clone();
+const up = f20.a.clone().sub(fwd.clone().multiplyScalar(f20.a.dot(fwd))).normalize();
+const right = up.clone().cross(fwd);
+const basis = new THREE.Matrix4().makeBasis(right, up, fwd);
+const targetQ = new THREE.Quaternion().setFromRotationMatrix(basis.clone().transpose());
+
+const AX1 = new THREE.Vector3(0.6, 1, 0.25).normalize(), AX2 = new THREE.Vector3(1, -0.3, 0.5).normalize();
+const X_AXIS = new THREE.Vector3(1, 0, 0);
+const qA = new THREE.Quaternion(), qB = new THREE.Quaternion(), qW = new THREE.Quaternion();
+
+/* =====================================================================
+   5. 2D EFFECTS LAYER (flames, embers, dust, vignette) over the 3D canvas
+   ===================================================================== */
+const fx = $('fx'), ctx = fx.getContext('2d');
+let W = 2, H = 2;
+function resize() {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const r = stage.getBoundingClientRect();
+  const cssW = Math.max(2, r.width), cssH = cssW * 9 / 16;
+  renderer.setPixelRatio(dpr);
+  renderer.setSize(cssW, cssH, false);
+  W = Math.round(cssW * dpr); H = Math.round(cssH * dpr);
+  fx.width = W; fx.height = H;
+}
+new ResizeObserver(resize).observe(stage);
+resize();
+
+const toScreen = v3 => { const p = v3.clone().project(camera); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * H]; };
+const TORCH_PX = () => TORCH3.map(toScreen);
+
+const rngP = mulberry(99);
+const EMBERS = Array.from({ length: 80 }, (_, i) => ({
+  side: i % 2, T: 2.2 + rngP() * 2.4, ph: rngP(), sway: 2 + rngP() * 5,
+  amp: 0.008 + rngP() * 0.022, rise: 0.3 + rngP() * 0.3, size: 0.6 + rngP() * 1.4, drift: (rngP() - 0.5) * 0.06
+}));
+const DUST = Array.from({ length: 46 }, () => ({ vx: rngP() * 2 - 1, vy: -(0.1 + rngP() * 0.6), size: rngP(), life: 0.8 + rngP() * 0.7 }));
+
+function drawTorch(x, y, I, t, seed) {
+  ctx.fillStyle = '#17120e';
+  ctx.fillRect(x - 0.004 * W, y, 0.008 * W, 0.11 * H);
+  ctx.beginPath();
+  ctx.moveTo(x - 0.016 * W, y - 0.005 * H); ctx.lineTo(x + 0.016 * W, y - 0.005 * H);
+  ctx.lineTo(x + 0.007 * W, y + 0.03 * H); ctx.lineTo(x - 0.007 * W, y + 0.03 * H);
+  ctx.closePath(); ctx.fillStyle = '#231b15'; ctx.fill();
+  ctx.strokeStyle = `rgba(255,150,80,${0.35 * I})`; ctx.lineWidth = Math.max(1, H / 500); ctx.stroke();
+  if (I <= 0.01) return;
+  ctx.globalCompositeOperation = 'lighter';
+  const sway = Math.sin(t * 6.1 + seed) * 0.004 * W + Math.sin(t * 13.7 + seed) * 0.002 * W;
+  const layers = [
+    { h: 0.105, w: 0.021, c: [255, 80, 25], a: 0.55 },
+    { h: 0.078, w: 0.014, c: [255, 155, 55], a: 0.7 },
+    { h: 0.048, w: 0.008, c: [255, 235, 170], a: 0.95 }
+  ];
+  for (const L of layers) {
+    const h = L.h * H * I * (0.85 + 0.15 * flicker(t * 1.7, seed + L.h * 10));
+    const w = L.w * W * (0.85 + 0.15 * I);
+    const tx = x + sway * (L.h / 0.105), by = y - 0.005 * H, ty = by - h;
+    const grd = ctx.createRadialGradient(x, by - h * 0.25, 0, x, by - h * 0.25, h);
+    grd.addColorStop(0, `rgba(${L.c[0]},${L.c[1]},${L.c[2]},${L.a * I})`);
+    grd.addColorStop(1, `rgba(${L.c[0]},${L.c[1]},${L.c[2]},0)`);
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.moveTo(tx, ty);
+    ctx.bezierCurveTo(x + w * 0.35, by - h * 0.5, x + w, by - w * 0.3, x, by + w * 0.15);
+    ctx.bezierCurveTo(x - w, by - w * 0.3, x - w * 0.35, by - h * 0.5, tx, ty);
+    ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+function paintFX(t, lv) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  const tp = TORCH_PX();
+  drawTorch(tp[0][0], tp[0][1], lv.L, t, 1);
+  drawTorch(tp[1][0], tp[1][1], lv.R, t, 4);
+
+  ctx.globalCompositeOperation = 'lighter';
+  for (const e of EMBERS) {
+    const I = e.side ? lv.R : lv.L;
+    if (I <= 0.02) continue;
+    const life = (t / e.T + e.ph) % 1;
+    const x = tp[e.side][0] + (e.drift * life + Math.sin(life * e.sway * 2 + e.ph * 9) * e.amp) * W;
+    const y = tp[e.side][1] - (0.08 + life * e.rise) * H;
+    const a = Math.sin(life * Math.PI) * (1 - life) * I * 1.3;
+    const r = e.size * (1 - life * 0.5) * H / 520;
+    ctx.fillStyle = `rgba(255,${Math.round(140 + 60 * (1 - life))},60,${a})`;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+
+  // Dust bursts from the die's lower edge, located by projecting its 3D position
+  if (t >= LAND) {
+    const d = t - LAND;
+    const [ox, oy] = toScreen(die.position.clone().add(new THREE.Vector3(0, -0.85 * die.scale.x, 0)));
+    const spread = (1 - Math.exp(-4 * d)) / 4;
+    for (const p of DUST) {
+      if (d > p.life) continue;
+      const k = d / p.life;
+      const x = ox + p.vx * W * 0.6 * spread, y = oy + p.vy * H * 0.8 * spread + 0.05 * H * d * d;
+      const r = (4 + p.size * 18 * k + 6 * k) * H / 700, a = 0.3 * (1 - k);
+      const grd = ctx.createRadialGradient(x, y, 0, x, y, r);
+      grd.addColorStop(0, `rgba(170,140,105,${a})`); grd.addColorStop(1, 'rgba(170,140,105,0)');
+      ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, W * 0.62);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.7)');
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+}
+
+/* =====================================================================
+   6. PAINT THE 3D FRAME: scene numbers → light intensities and die pose
+   ===================================================================== */
+function paint3D(t, lv) {
+  const s = scene, fl = flashAmount();
+  torchLights[0].intensity = 2.6 * lv.L;
+  torchLights[1].intensity = 2.6 * lv.R;
+  ambient.intensity = 0.06 + 0.4 * lv.avg;
+  key.intensity = (0.4 + 1.9 * lv.avg) * s.diceIn * (1 - 0.3 * s.dieDim);
+  rim.intensity = 0.55 * s.diceIn;
+  impactLight.intensity = 7 * fl;
+
+  die.visible = s.diceIn > 0;
+  // Orientation = landing pose × remaining spin (the same idea as v1, written with quaternions)
+  const ang = remainingAngle(t);
+  qA.setFromAxisAngle(AX1, ang);
+  qB.setFromAxisAngle(AX2, ang * 0.37);
+  die.quaternion.copy(targetQ).multiply(qA).multiply(qB);
+  if (t > LAND) {
+    const d = t - LAND, w = 0.16 * Math.exp(-d * 6) * Math.sin(d * 26);
+    qW.setFromAxisAngle(X_AXIS, w);
+    die.quaternion.premultiply(qW);
+  }
+  const bob = 0.06 * Math.sin(t * 1.3) * (1 - s.drop) * (1 - s.dieDim);
+  die.position.set(0, 0.48 * s.dieDim + bob, 1.2 * s.drop - 0.5 * s.dieDim);
+
+  const glowAmt = s.glow20 * (1 - 0.3 * s.dieDim) * (0.85 + 0.15 * Math.sin(t * 3));
+  dieMat.emissiveIntensity = (0.35 + 2.2 * glowAmt) * Math.max(0.15, s.diceIn);
+
+  renderer.render(room, camera);
+}
+
+/* =====================================================================
+   7. DOM OVERLAYS (gate, lintel, scroll, banner): unchanged from v1
+   ===================================================================== */
+(function buildGate() {
+  const out = [`<defs>
+    <linearGradient id="barV" x1="0" x2="1"><stop offset="0" stop-color="#121113"/><stop offset=".42" stop-color="#5d5751"/><stop offset=".58" stop-color="#38332f"/><stop offset="1" stop-color="#0d0c0e"/></linearGradient>
+    <linearGradient id="barH" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#121113"/><stop offset=".42" stop-color="#5d5751"/><stop offset=".58" stop-color="#38332f"/><stop offset="1" stop-color="#0d0c0e"/></linearGradient>
+    <radialGradient id="rivet" cx=".35" cy=".35" r=".7"><stop offset="0" stop-color="#8c837b"/><stop offset=".5" stop-color="#3c3734"/><stop offset="1" stop-color="#0d0c0d"/></radialGradient>
+    <filter id="rust" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 .45  0 0 0 0 .2  0 0 0 0 .08  1.6 0 0 0 -.85" result="r"/>
+      <feComposite in="r" in2="SourceGraphic" operator="atop"/>
+    </filter></defs><g filter="url(#rust)">`];
+  const xs = Array.from({ length: 10 }, (_, i) => 8 + i * 16), ys = [22, 48, 74];
+  for (const x of xs) {
+    out.push(`<rect x="${x - 1.7}" y="0" width="3.4" height="84" fill="url(#barV)"/>`);
+    out.push(`<polygon points="${x - 1.7},84 ${x + 1.7},84 ${x},90" fill="#2b2826"/>`);
+  }
+  for (const y of ys) out.push(`<rect x="0" y="${y - 1.5}" width="160" height="3" fill="url(#barH)"/>`);
+  for (const x of xs) for (const y of ys) out.push(`<circle cx="${x}" cy="${y}" r="2.1" fill="url(#rivet)"/>`);
+  out.push('</g>');
+  $('gateSvg').innerHTML = out.join('');
+})();
+
+const FLOURISH = '<path d="M3 37 Q3 3 37 3"/><path d="M9 37 Q9 9 37 9"/><path d="M37 3 C42 3 42 10 37 10 C34 10 33 7 35 6"/><path d="M3 37 C3 42 10 42 10 37 C10 34 7 33 6 35"/>';
+for (const c of ['tl', 'tr', 'bl', 'br']) {
+  $('banner').insertAdjacentHTML('beforeend', `<svg class="flourish ${c}" viewBox="0 0 44 44" aria-hidden="true">${FLOURISH}</svg>`);
+}
+const flourishPaths = [...document.querySelectorAll('.flourish path')];
+flourishPaths.forEach(p => { p.setAttribute('pathLength', '1'); p.style.strokeDasharray = '1 1'; p.style.strokeDashoffset = '1'; });
+
+function paintDOM(t, lv) {
+  const s = scene;
+  $('lintel').style.filter = `brightness(${(0.2 + 0.85 * lv.avg).toFixed(3)})`;
+  $('inscription').style.opacity = s.lintelIn;
+  $('inscription').style.letterSpacing = (0.55 - 0.25 * s.lintelIn).toFixed(3) + 'em';
+  $('lintelOut').style.opacity = 1 - s.lintelOut;
+
+  let rise = s.gateRise;
+  if (rise > 0 && rise < 1) rise += 0.014 * Math.sin(rise * Math.PI * 7) * Math.sin(rise * Math.PI);
+  $('gate').style.transform = `translateY(${((-rise + s.gateSlam) * 100).toFixed(3)}%)`;
+  $('gate').style.filter = `brightness(${(0.16 + 0.95 * lv.avg).toFixed(3)})`;
+
+  const w = s.scrollOpen * (1 - s.scrollClose), inset = 50 - 50 * w;
+  $('scroll').style.opacity = Math.min(1, w * 10);
+  $('scroll').style.filter = `brightness(${(0.7 + 0.35 * lv.avg).toFixed(3)})`;
+  $('scrollPaper').style.clipPath = `inset(0 ${inset}% 0 ${inset}%)`;
+  $('rodL').style.left = inset + '%';
+  $('rodR').style.left = (100 - inset) + '%';
+  $('line1').style.opacity = s.line1 * (1 - s.line1Out);
+  $('line1').style.transform = `translate(-50%, calc(-50% + ${((1 - s.line1) * 0.8).toFixed(3)}cqw))`;
+  $('line2').style.opacity = s.line2;
+  $('line2').style.transform = `translate(-50%, calc(-50% + ${((1 - s.line2) * 0.8).toFixed(3)}cqw))`;
+
+  const b = 50 - 50 * s.banner;
+  $('bannerClip').style.clipPath = `inset(-10% ${b}% -10% ${b}%)`;
+  $('title').style.opacity = Math.min(1, s.stamp * 1.8);
+  $('title').style.transform = `scale(${(1.5 - 0.5 * s.stamp).toFixed(4)})`;
+  $('title').style.filter = `blur(${((1 - s.stamp) * 4).toFixed(2)}px)`;
+  for (const p of flourishPaths) p.style.strokeDashoffset = 1 - s.flourish;
+
+  $('tagline').style.opacity = s.tagline;
+  $('tagline').style.transform = `translate(-50%, calc(-50% + ${((1 - s.tagline) * 1).toFixed(3)}cqw))`;
+  $('coming').style.opacity = s.coming;
+
+  $('flash').style.opacity = (flashAmount() * 0.6).toFixed(3);
+  $('black').style.opacity = s.fadeOut;
+
+  let amp = 0;
+  if (s.impact > 0 && s.impact < 1) amp += 1.4 * Math.pow(1 - s.impact, 2);
+  if (s.stamp > 0 && s.stamp < 1) amp += 0.35 * Math.pow(1 - s.stamp, 2);
+  if (s.slamShake > 0 && s.slamShake < 1) amp += 1.0 * Math.pow(1 - s.slamShake, 2);
+  if (reduceMotion) amp = 0;
+  const dx = amp * Math.sin(t * 97.3) * Math.cos(t * 41.1), dy = amp * Math.cos(t * 89.7) * Math.sin(t * 53.9);
+  $('world').style.transform = `translate(${dx.toFixed(3)}%, ${dy.toFixed(3)}%)`;
+}
+
+/* =====================================================================
+   8. TONE.JS SOUND
+   Two kinds of sound, matching the two kinds of motion:
+   • Continuous layers (drone, fire, chains grinding, the die's whoosh)
+     follow scene values every frame, like the visuals do.
+   • One-shot cues (impact boom, gate clank) fire when the playhead
+     CROSSES their time while playing forward. Scrubbing stays silent.
+   Every sound is synthesized: oscillators, filtered noise, envelopes.
+   ===================================================================== */
+const audio = { on: false, built: false };
+let A = null;   // holds the synth graph once built
+
+function buildAudio() {
+  const master = new Tone.Gain(0).toDestination();
+  const mix = new Tone.Gain(1).connect(master);                    // follows the final fade-out
+  const verb = new Tone.Reverb({ decay: 5, preDelay: 0.03, wet: 0.35 }).connect(mix);  // stone-room echo
+
+  // Drone: two detuned sawtooth stacks (D and A), darkened by a low-pass filter
+  const droneGain = new Tone.Gain(0).connect(verb);
+  const droneFilter = new Tone.Filter(240, 'lowpass').connect(droneGain);
+  const d1 = new Tone.FatOscillator('D1', 'sawtooth', 25).connect(droneFilter);
+  const d2 = new Tone.FatOscillator('A1', 'sawtooth', 18).connect(droneFilter);
+  d1.volume.value = -10; d2.volume.value = -14;
+
+  // Fire: rumbling brown noise plus random crackle pops, both scaled by torch brightness
+  const fireGain = new Tone.Gain(0).connect(verb);
+  const fireFilter = new Tone.Filter(700, 'bandpass').connect(fireGain);
+  const fire = new Tone.Noise('brown').connect(fireFilter);
+  const popFilter = new Tone.Filter(2200, 'highpass').connect(fireGain);
+  const pop = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.001, decay: 0.025, sustain: 0 } }).connect(popFilter);
+  pop.volume.value = -6;
+
+  // Gate grind: narrow-band noise that swells while the gate moves
+  const grindGain = new Tone.Gain(0).connect(verb);
+  const grindFilter = new Tone.Filter({ frequency: 320, type: 'bandpass', Q: 6 }).connect(grindGain);
+  const grind = new Tone.Noise('pink').connect(grindFilter);
+
+  // Whoosh: air noise whose pitch and volume follow the die's spin speed
+  const whooshGain = new Tone.Gain(0).connect(verb);
+  const whooshFilter = new Tone.Filter({ frequency: 400, type: 'bandpass', Q: 1.5 }).connect(whooshGain);
+  const whoosh = new Tone.Noise('pink').connect(whooshFilter);
+
+  // One-shot instruments
+  const chain = new Tone.MetalSynth({ envelope: { attack: 0.001, decay: 0.35, release: 0.2 }, harmonicity: 5.1, modulationIndex: 24, resonance: 900, octaves: 1.5 }).connect(verb);
+  chain.volume.value = -20;
+  const paperFilter = new Tone.Filter({ frequency: 3200, type: 'bandpass', Q: 0.8 }).connect(verb);
+  const paper = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.04, decay: 0.45, sustain: 0 } }).connect(paperFilter);
+  paper.volume.value = -16;
+  const whoompFilter = new Tone.Filter(500, 'lowpass').connect(verb);
+  const whoomp = new Tone.NoiseSynth({ noise: { type: 'brown' }, envelope: { attack: 0.06, decay: 0.6, sustain: 0 } }).connect(whoompFilter);
+  whoomp.volume.value = -4;
+  const boom = new Tone.MembraneSynth({ pitchDecay: 0.08, octaves: 6, envelope: { attack: 0.001, decay: 1.2, sustain: 0, release: 0.4 } }).connect(verb);
+  boom.volume.value = -2;
+  const crashFilter = new Tone.Filter(1800, 'lowpass').connect(verb);
+  const crash = new Tone.NoiseSynth({ noise: { type: 'brown' }, envelope: { attack: 0.001, decay: 0.7, sustain: 0 } }).connect(crashFilter);
+  crash.volume.value = -4;
+  const chordFilter = new Tone.Filter(1600, 'lowpass').connect(verb);
+  const chord = new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'fatsawtooth', count: 3, spread: 20 }, envelope: { attack: 0.25, decay: 0.6, sustain: 0.5, release: 2.5 } }).connect(chordFilter);
+  chord.volume.value = -18;
+  const bell = new Tone.FMSynth({ harmonicity: 3.01, modulationIndex: 12, envelope: { attack: 0.001, decay: 3, sustain: 0, release: 2 }, modulationEnvelope: { attack: 0.001, decay: 2, sustain: 0, release: 1 } }).connect(verb);
+  bell.volume.value = -12;
+
+  d1.start(); d2.start(); fire.start(); grind.start(); whoosh.start();
+  A = { master, mix, droneGain, fireGain, grindGain, whooshGain, whooshFilter, pop, chain, paper, whoomp, boom, crash, chord, bell };
+  audio.built = true;
+}
+
+// One-shot cues, each pinned to a moment in the script
+const CUES = [
+  { t: 0.25,  name: 'Left torch catches',  fire: () => A.whoomp.triggerAttackRelease(0.6, undefined, 0.8) },
+  { t: 0.65,  name: 'Right torch catches', fire: () => A.whoomp.triggerAttackRelease(0.6, undefined, 0.7) },
+  ...[2.65, 2.95, 3.3, 3.62, 3.95, 4.25].map((t, i) => ({ t, name: 'Chain links', fire: () => A.chain.triggerAttackRelease(i % 2 ? 'C2' : 'D2', 0.2, undefined, 0.6) })),
+  { t: 4.4,   name: 'Gate locks open',     fire: () => A.boom.triggerAttackRelease('A0', 0.4, undefined, 0.35) },
+  { t: 4.6,   name: 'Scroll unrolls',      fire: () => A.paper.triggerAttackRelease(0.5) },
+  { t: 9.0,   name: 'Scroll rolls up',     fire: () => A.paper.triggerAttackRelease(0.4) },
+  { t: 9.8,   name: 'Die lands',           fire: () => { A.boom.triggerAttackRelease('C1', 1.2, undefined, 1); A.crash.triggerAttackRelease(0.7); } },
+  { t: 9.95,  name: 'Natural 20 chord',    fire: () => A.chord.triggerAttackRelease(['D3', 'F#3', 'A3', 'D4'], 2.2) },
+  { t: 11.35, name: 'Title stamp',         fire: () => { A.boom.triggerAttackRelease('G1', 0.3, undefined, 0.55); A.paper.triggerAttackRelease(0.25); } },
+  { t: 12.9,  name: 'Bell',                fire: () => A.bell.triggerAttackRelease('D2', 3) },
+  { t: 14.2,  name: 'Gate slams',          fire: () => { A.chain.triggerAttackRelease('C1', 0.5, undefined, 1); A.boom.triggerAttackRelease('D1', 0.8, undefined, 0.9); A.crash.triggerAttackRelease(0.5); } },
+  { t: 14.4,  name: 'Gate bounce',         fire: () => A.chain.triggerAttackRelease('C1', 0.3, undefined, 0.45) },
+  { t: 14.5,  name: 'Gate bounce',         fire: () => A.chain.triggerAttackRelease('C1', 0.2, undefined, 0.22) }
+];
+
+function updateAudio(t, prevT, lv) {
+  if (!audio.built) return;
+  const live = audio.on && playing ? 1 : 0;
+  const s = scene;
+  A.droneGain.gain.rampTo(live * 0.55 * Math.min(1, t / 2), 0.1);
+  A.fireGain.gain.rampTo(live * 0.5 * lv.avg, 0.05);
+  A.grindGain.gain.rampTo(live * (s.gateRise > 0 && s.gateRise < 1 ? Math.sin(Math.PI * s.gateRise) * 0.9 : 0), 0.05);
+  const spd = t < LAND ? spinSpeed(t) : 0;
+  A.whooshGain.gain.rampTo(live * s.diceIn * clamp01((spd - 0.8) / 6.2) * 0.8, 0.05);
+  A.whooshFilter.frequency.rampTo(300 + spd * 160, 0.05);
+  A.mix.gain.rampTo(1 - 0.95 * s.fadeOut, 0.1);
+  if (!live) return;
+  if (Math.random() < lv.avg * 0.22) { try { A.pop.triggerAttackRelease(0.02, undefined, 0.3 + Math.random() * 0.7); } catch (e) {} }
+  for (const c of CUES) if (prevT < c.t && c.t <= t) { try { c.fire(); } catch (e) { /* a dropped note is not worth stopping playback */ } }
+}
+
+async function toggleSound() {
+  const btn = $('soundBtn');
+  if (!window.Tone) return;
+  if (!audio.on) {
+    await Tone.start();                       // browsers only allow audio after a click
+    if (!audio.built) buildAudio();
+    audio.on = true;
+    A.master.gain.rampTo(0.85, 0.2);
+    if (t >= DURATION) replay();
+  } else {
+    audio.on = false;
+    A.master.gain.rampTo(0, 0.2);
+  }
+  btn.textContent = audio.on ? 'Sound on' : 'Sound off';
+  btn.setAttribute('aria-pressed', String(audio.on));
+}
+
+/* =====================================================================
+   9. TIMELINE LANES (tracks plus a Sound lane for cues)
+   ===================================================================== */
+const lanesEl = $('lanes');
+function addLane(name, items) {
+  const row = document.createElement('div');
+  row.className = 'lane';
+  row.innerHTML = `<span class="lane-name">${name}</span><div class="track"></div>`;
+  for (const it of items) {
+    const seg = document.createElement('div');
+    seg.className = 'seg' + (it.cue ? ' cue' : '');
+    seg.title = it.label;
+    seg.style.left = (it.start / DURATION * 100) + '%';
+    seg.style.width = (it.len / DURATION * 100) + '%';
+    row.querySelector('.track').append(seg);
+    it.ref.seg = seg;
+  }
+  lanesEl.append(row);
+}
+for (const name of [...new Set(tracks.map(tr => tr.group))]) {
+  addLane(name, tracks.filter(tr => tr.group === name).map(tr => ({ start: tr.start, len: tr.duration, label: `${tr.key}: ${tr.start.toFixed(1)}–${(tr.start + tr.duration).toFixed(2)} s`, ref: tr })));
+}
+addLane('Sound', CUES.map(c => ({ start: c.t, len: 0.08, cue: true, label: `${c.name} · ${c.t.toFixed(2)} s`, ref: c })));
+for (const s of [0, 3, 6, 9, 12, 15]) {
+  const span = document.createElement('span');
+  span.textContent = s + 's';
+  span.style.left = (s / DURATION * 100) + '%';
+  $('ticks').append(span);
+}
+
+/* =====================================================================
+   10. PLAYBACK
+   ===================================================================== */
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let t = reduceMotion ? 13.9 : 0;
+let playing = !reduceMotion;
+let last = null;
+
+function updateUI() {
+  $('readout').textContent = `t = ${t.toFixed(2)} s`;
+  $('scrub').value = Math.round(t * 1000);
+  $('playBtn').textContent = playing ? 'Pause' : 'Play';
+  $('replayOverlay').hidden = !(t >= DURATION);
+  lanesEl.style.setProperty('--f', t / DURATION);
+  for (const tr of tracks) tr.seg.classList.toggle('on', t >= tr.start && t <= tr.start + tr.duration);
+  for (const c of CUES) c.seg.classList.toggle('on', t >= c.t && t <= c.t + 0.25);
+}
+function frame(now) {
+  const prevT = t;
+  if (last !== null && playing) {
+    t += Math.min(0.1, (now - last) / 1000);
+    if (t >= DURATION) { t = DURATION; playing = false; }
+  }
+  last = now;
+  evaluate(t);
+  const lv = torchLevels(t);
+  paint3D(t, lv);
+  paintFX(t, lv);
+  paintDOM(t, lv);
+  updateAudio(t, prevT, lv);
+  updateUI();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+function replay() { t = 0; playing = true; }
+$('replayBtn').addEventListener('click', replay);
+$('replayOverlay').addEventListener('click', replay);
+$('playBtn').addEventListener('click', () => { if (t >= DURATION) { replay(); return; } playing = !playing; });
+$('scrub').addEventListener('input', e => { playing = false; t = e.target.value / 1000; });
+if (window.Tone) {
+  $('soundBtn').addEventListener('click', toggleSound);
+} else {
+  $('soundBtn').disabled = true;
+  $('soundBtn').textContent = 'Sound unavailable';
+}
+
+</script>
+
+</body></html>

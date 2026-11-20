@@ -1,0 +1,847 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Dungeon Roller Trailer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Jost:wght@400;500&family=JetBrains+Mono&display=swap">
+<style>
+/* Layout: a 16:9 dungeon stage (canvas world + SVG/HTML overlays), playback controls, then track lanes that mirror the code */
+:root {
+  --night: #0b0907;
+  --panel: #14110d;
+  --rule: #2b241c;
+  --ink: #efe6d4;
+  --muted: #9b8d78;
+  --ember: #e0873a;
+  --gold: #d6b062;
+  --display: "Uncial Antiqua", "Palatino Linotype", Georgia, serif;
+  --script: "IM Fell English", "Palatino Linotype", Georgia, serif;
+  --caps: "IM Fell English SC", "Palatino Linotype", Georgia, serif;
+  --ui: "Jost", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--night); color: var(--ink); font-family: var(--ui); font-size: 15px; line-height: 1.55; }
+.wrap {
+  max-width: 1000px; margin: 0 auto;
+  padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 18px;
+}
+
+/* ---------- Stage ---------- */
+.stage {
+  position: relative; width: 100%; max-width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000; overflow: hidden; border-radius: 6px;
+  container-type: inline-size; isolation: isolate;
+}
+.world { position: absolute; inset: 0; }
+#scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+svg.tex { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* Narration scroll */
+.scroll {
+  position: absolute; left: 50%; top: 82%;
+  width: 58cqw; height: 6.6cqw;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+}
+.scroll-paper {
+  position: absolute; inset: 0; overflow: hidden;
+  box-shadow: inset 0 0 1.4cqw rgba(70, 34, 10, .8);
+}
+.line {
+  position: absolute; left: 50%; top: 50%; margin: 0;
+  width: 100%; text-align: center; white-space: nowrap;
+  font-family: var(--script); font-style: italic;
+  font-size: 2.9cqw; color: #2b1a0d;
+  opacity: 0;
+}
+.rod {
+  position: absolute; top: -1cqw; width: 1.5cqw; height: 8.6cqw;
+  transform: translateX(-50%);
+  border-radius: .5cqw;
+  background: linear-gradient(90deg, #2a170b, #8a5a31 45%, #5a371b 70%, #22130a);
+  box-shadow: 0 .3cqw .8cqw rgba(0,0,0,.6);
+}
+
+/* Title banner */
+.banner-pos {
+  position: absolute; left: 50%; top: 68%;
+  width: 66cqw; height: 11.5cqw;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 .8cqw 1.4cqw rgba(0,0,0,.7));
+}
+.banner-clip { position: absolute; inset: 0; clip-path: inset(-10% 50% -10% 50%); }
+.banner {
+  position: absolute; inset: 0; overflow: hidden;
+  clip-path: polygon(0 0, 100% 0, 95.5% 50%, 100% 100%, 0 100%, 4.5% 50%);
+  display: grid; place-items: center;
+}
+.banner::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  box-shadow: inset 0 0 1.8cqw rgba(80, 38, 10, .75);
+}
+.title {
+  position: relative; margin: 0;
+  font-family: var(--display); font-weight: 400;
+  font-size: 5.6cqw; line-height: 1; letter-spacing: .04em;
+  color: #2a170c; opacity: 0; white-space: nowrap;
+}
+.rubric { color: #9c1f17; }
+.flourish { position: absolute; width: 5.4cqw; height: 5.4cqw; overflow: visible; }
+.flourish path { fill: none; stroke: #3d2413; stroke-width: 1.3; stroke-linecap: round; }
+.flourish.tl { top: 9%;  left: 7.5%; }
+.flourish.tr { top: 9%;  right: 7.5%; transform: scaleX(-1); }
+.flourish.bl { bottom: 9%; left: 7.5%; transform: scaleY(-1); }
+.flourish.br { bottom: 9%; right: 7.5%; transform: scale(-1, -1); }
+
+.tagline, .coming {
+  position: absolute; left: 50%; margin: 0; white-space: nowrap;
+  transform: translate(-50%, -50%); opacity: 0;
+}
+.tagline {
+  top: 84%;
+  font-family: var(--script); font-style: italic; font-size: 2.9cqw;
+  color: #ecd7a6; text-shadow: 0 0 1.2cqw rgba(224, 135, 58, .55);
+}
+.coming {
+  top: 91.5%;
+  font-family: var(--caps); font-size: 1.7cqw; letter-spacing: .42em; padding-left: .42em;
+  color: #bba47b;
+}
+
+/* Iron gate + stone lintel */
+.gate { position: absolute; inset: 0; will-change: transform; }
+.gate svg { width: 100%; height: 100%; display: block; }
+.lintel {
+  position: absolute; left: 0; right: 0; top: 0; height: 13%;
+  box-shadow: 0 .6cqw 1.4cqw rgba(0,0,0,.85);
+  display: grid; place-items: center;
+}
+.lintel::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 22%, rgba(0,0,0,.55) 22% 22.25%, transparent 22.25% 77.75%, rgba(0,0,0,.55) 77.75% 78%, transparent 78%),
+    linear-gradient(180deg, rgba(255,230,190,.08), transparent 30%, transparent 80%, rgba(0,0,0,.5));
+}
+.lintel-out { position: relative; }
+.inscription {
+  margin: 0;
+  font-family: var(--caps); font-size: 2.3cqw; letter-spacing: .55em;
+  color: #241f1b;
+  text-shadow: 0 .12cqw 0 rgba(255, 226, 180, .3), 0 -.08cqw 0 rgba(0,0,0,.7);
+  opacity: 0; white-space: nowrap;
+}
+.flash {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: radial-gradient(60% 70% at 50% 45%, rgba(255, 214, 150, .9), rgba(255, 140, 60, .35) 45%, transparent 75%);
+  mix-blend-mode: screen;
+}
+.black { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+.replay-overlay {
+  position: absolute; right: 2.5cqw; bottom: 2.5cqw;
+  font: 500 13px/1 var(--ui); letter-spacing: .12em; text-transform: uppercase;
+  color: var(--ink); background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.2); border-radius: 999px;
+  padding: 10px 16px; cursor: pointer;
+}
+
+/* ---------- Controls ---------- */
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+button.ctl {
+  font: 500 13px/1 var(--ui); letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink); background: var(--panel);
+  border: 1px solid var(--rule); border-radius: 4px;
+  padding: 10px 14px; cursor: pointer; min-width: 84px;
+}
+button.ctl:hover, .replay-overlay:hover { border-color: var(--ember); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+#scrub { flex: 1 1 220px; min-width: 0; accent-color: var(--ember); }
+.readout { font-family: var(--mono); font-size: 13px; color: var(--gold); font-variant-numeric: tabular-nums; min-width: 10ch; text-align: right; }
+
+/* ---------- Timeline lanes ---------- */
+.lanes-card { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 16px; display: grid; gap: 10px; }
+.lanes-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.lanes-head h2 { margin: 0; font: 500 12px/1.2 var(--ui); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.lanes-head code { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.lanes { --label: 92px; --gap: 12px; position: relative; display: grid; gap: 6px; }
+.lane { display: grid; grid-template-columns: var(--label) 1fr; gap: var(--gap); align-items: center; }
+.lane-name { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.track { position: relative; height: 14px; background: rgba(255,255,255,.03); border-radius: 2px; }
+.seg {
+  position: absolute; top: 0; bottom: 0; min-width: 3px;
+  background: rgba(224,135,58,.2); border: 1px solid rgba(224,135,58,.4); border-radius: 2px;
+}
+.seg.on { background: rgba(224,135,58,.65); }
+.ticks { display: grid; grid-template-columns: var(--label) 1fr; gap: var(--gap); }
+.tick-row { position: relative; height: 16px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.tick-row span { position: absolute; transform: translateX(-50%); font-variant-numeric: tabular-nums; }
+.tick-row span:first-child { transform: none; }
+.tick-row span:last-child { transform: translateX(-100%); }
+.playhead {
+  position: absolute; top: -4px; bottom: -4px; width: 1px;
+  background: var(--gold); box-shadow: 0 0 6px var(--gold);
+  left: calc(var(--label) + var(--gap) + (100% - var(--label) - var(--gap)) * var(--f, 0));
+  pointer-events: none;
+}
+.note { margin: 0; max-width: 68ch; color: var(--muted); }
+.note strong { color: var(--ink); font-weight: 500; }
+.note code { font-family: var(--mono); font-size: 13px; color: var(--ink); }
+@media (max-width: 480px) {
+  .lanes { --label: 74px; --gap: 8px; }
+  .lane-name { font-size: 12px; }
+}
+</style>
+
+<!-- Shared SVG filters: parchment and stone are generated from noise, no image files -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="paperTex" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.05" numOctaves="4" seed="8" result="fib"></feTurbulence>
+      <feColorMatrix in="fib" type="matrix" values="0 0 0 0 0.42  0 0 0 0 0.27  0 0 0 0 0.12  1.3 0 0 0 -0.5" result="stain"></feColorMatrix>
+      <feComposite in="stain" in2="SourceGraphic" operator="atop"></feComposite>
+    </filter>
+    <filter id="stoneTex" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="4" seed="3" result="n"></feTurbulence>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.08  0 0 0 0 0.07  0 0 0 0 0.06  1.5 0 0 0 -0.55" result="pits"></feColorMatrix>
+      <feComposite in="pits" in2="SourceGraphic" operator="atop"></feComposite>
+    </filter>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <div class="stage" id="stage">
+    <div class="world" id="world">
+      <canvas id="scene" aria-label="Torch-lit dungeon wall with a tumbling twenty-sided die"></canvas>
+
+      <div class="scroll" id="scroll">
+        <div class="scroll-paper" id="scrollPaper">
+          <svg class="tex" preserveAspectRatio="none"><rect width="100%" height="100%" fill="#d6bf93" filter="url(#paperTex)"></rect></svg>
+          <p class="line" id="line1">Every door is a gamble.</p>
+          <p class="line" id="line2">Every corridor, a roll of fate.</p>
+        </div>
+        <div class="rod" id="rodL"></div>
+        <div class="rod" id="rodR"></div>
+      </div>
+
+      <div class="banner-pos">
+        <div class="banner-clip" id="bannerClip">
+          <div class="banner" id="banner">
+            <svg class="tex" preserveAspectRatio="none"><rect width="100%" height="100%" fill="#dcc596" filter="url(#paperTex)"></rect></svg>
+            <h1 class="title" id="title"><span class="rubric">D</span>ungeon <span class="rubric">R</span>oller</h1>
+          </div>
+        </div>
+      </div>
+
+      <p class="tagline" id="tagline">Fortune favours the bold</p>
+      <p class="coming" id="coming">Coming soon</p>
+
+      <div class="gate" id="gate"><svg viewBox="0 0 160 90" preserveAspectRatio="none" id="gateSvg" aria-hidden="true"></svg></div>
+
+      <div class="lintel" id="lintel">
+        <svg class="tex" preserveAspectRatio="none"><rect width="100%" height="100%" fill="#625a50" filter="url(#stoneTex)"></rect></svg>
+        <div class="lintel-out" id="lintelOut"><p class="inscription" id="inscription">Beneath the forgotten kingdom…</p></div>
+      </div>
+
+      <div class="flash" id="flash"></div>
+    </div>
+    <div class="black" id="black"></div>
+    <button class="replay-overlay" id="replayOverlay" hidden>Replay</button>
+  </div>
+
+  <div class="controls">
+    <button class="ctl" id="playBtn">Pause</button>
+    <button class="ctl" id="replayBtn">Replay</button>
+    <input type="range" id="scrub" min="0" max="15000" step="10" value="0" aria-label="Scrub through the trailer">
+    <span class="readout" id="readout">t = 0.00 s</span>
+  </div>
+
+  <section class="lanes-card" aria-label="Timeline">
+    <div class="lanes-head">
+      <h2>Timeline</h2>
+      <code>tracks write numbers · paint() draws them</code>
+    </div>
+    <div class="lanes" id="lanes"><div class="playhead" id="playhead"></div></div>
+    <div class="ticks"><span></span><div class="tick-row" id="ticks"></div></div>
+  </section>
+
+  <p class="note"><strong>Scrub to 9.80 s</strong> to see the die land. The D20 is real 3D: 12 corner points and 20 triangular faces, rotated and projected onto the canvas every frame, with no 3D library. Opposite faces add up to 21, and the 6 and 9 carry a dot, the same as on a real die.</p>
+</div>
+
+<script>
+/* =====================================================================
+   1. EASING
+   ===================================================================== */
+const ease = {
+  linear:    p => p,
+  outCubic:  p => 1 - Math.pow(1 - p, 3),
+  inOutQuad: p => p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2,
+  inQuad:    p => p * p,
+  // A falling weight that bounces: used for the gate slamming shut
+  outBounce: p => {
+    const n = 7.5625, d = 2.75;
+    if (p < 1 / d) return n * p * p;
+    if (p < 2 / d) return n * (p -= 1.5 / d) * p + 0.75;
+    if (p < 2.5 / d) return n * (p -= 2.25 / d) * p + 0.9375;
+    return n * (p -= 2.625 / d) * p + 0.984375;
+  }
+};
+const clamp01 = x => Math.min(Math.max(x, 0), 1);
+
+/* =====================================================================
+   2. ENGINE
+   Upgrade from the title sequence: tracks no longer touch the page.
+   Each track only writes ONE number into `scene`. A single paint()
+   then combines those numbers into pixels. When two tracks affect the
+   same thing (the gate rises, later slams), paint() adds them up, so
+   no two tracks ever fight over a style property.
+   ===================================================================== */
+const DURATION = 15;
+const scene = {};
+const tracks = [];
+
+function track(group, key, start, duration, easing) {
+  tracks.push({ group, key, start, duration, easing });
+  scene[key] = 0;
+}
+function evaluate(t) {
+  for (const tr of tracks) scene[tr.key] = tr.easing(clamp01((t - tr.start) / tr.duration));
+}
+
+/* =====================================================================
+   3. THE SCRIPT  (group,        key,          start, length, easing)
+   ===================================================================== */
+track('Torches',     'torchL',       0.2, 1.2,  ease.linear);
+track('Torches',     'torchR',       0.6, 1.2,  ease.linear);
+track('D20',         'diceIn',       0.8, 2.0,  ease.inOutQuad);
+track('Inscription', 'lintelIn',     1.6, 1.0,  ease.outCubic);
+track('Gate',        'gateRise',     2.6, 1.8,  ease.inOutQuad);
+track('Scroll',      'scrollOpen',   4.6, 0.6,  ease.outCubic);
+track('Inscription', 'lintelOut',    5.0, 0.8,  ease.inOutQuad);
+track('Scroll',      'line1',        5.0, 0.6,  ease.outCubic);
+track('Scroll',      'line1Out',     6.9, 0.4,  ease.inQuad);
+track('Scroll',      'line2',        7.3, 0.6,  ease.outCubic);
+track('Scroll',      'scrollClose',  9.0, 0.4,  ease.inQuad);
+track('D20',         'drop',         9.3, 0.5,  ease.inQuad);
+track('Impact',      'impact',       9.8, 1.0,  ease.linear);
+track('D20',         'glow20',       9.8, 0.6,  ease.outCubic);
+track('D20',         'dieDim',      10.9, 1.0,  ease.inOutQuad);
+track('Title',       'banner',      10.9, 0.5,  ease.outCubic);
+track('Title',       'stamp',       11.3, 0.3,  ease.outCubic);
+track('Title',       'flourish',    11.5, 1.2,  ease.inOutQuad);
+track('Tagline',     'tagline',     12.9, 0.8,  ease.outCubic);
+track('Tagline',     'coming',      13.5, 0.6,  ease.outCubic);
+track('Gate',        'gateSlam',    14.0, 0.55, ease.outBounce);
+track('Impact',      'slamShake',   14.2, 0.6,  ease.linear);
+track('Fade',        'fadeOut',     14.5, 0.5,  ease.inOutQuad);
+
+/* =====================================================================
+   4. DETERMINISTIC RANDOMNESS
+   Embers and dust look random, but come from a seeded generator,
+   so frame 9.8 s always looks identical. Scrubbing depends on that.
+   ===================================================================== */
+function mulberry(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/* =====================================================================
+   5. THE D20: geometry
+   An icosahedron's 12 corners sit at (0, ±1, ±φ) and its rotations,
+   where φ is the golden ratio. Any three corners that are all exactly
+   2 apart form one of the 20 faces.
+   ===================================================================== */
+const PHI = (1 + Math.sqrt(5)) / 2;
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const norm = a => { const l = Math.hypot(a[0], a[1], a[2]); return [a[0] / l, a[1] / l, a[2] / l]; };
+
+const RAW = [
+  [0, 1, PHI], [0, -1, PHI], [0, 1, -PHI], [0, -1, -PHI],
+  [1, PHI, 0], [-1, PHI, 0], [1, -PHI, 0], [-1, -PHI, 0],
+  [PHI, 0, 1], [-PHI, 0, 1], [PHI, 0, -1], [-PHI, 0, -1]
+];
+const VERTS = RAW.map(norm);
+const FACES = [];
+const dist = (a, b) => Math.hypot(...sub(a, b));
+for (let i = 0; i < 12; i++) for (let j = i + 1; j < 12; j++) for (let k = j + 1; k < 12; k++) {
+  if (Math.abs(dist(RAW[i], RAW[j]) - 2) < 1e-6 && Math.abs(dist(RAW[j], RAW[k]) - 2) < 1e-6 && Math.abs(dist(RAW[i], RAW[k]) - 2) < 1e-6) {
+    let v = [i, j, k];
+    const c = norm([0, 1, 2].map(n => VERTS[i][n] + VERTS[j][n] + VERTS[k][n]));
+    // Wind every face the same way (counter-clockwise seen from outside)
+    if (dot(cross(sub(VERTS[j], VERTS[i]), sub(VERTS[k], VERTS[i])), c) < 0) v = [i, k, j];
+    FACES.push({ v, n: c, num: 0 });
+  }
+}
+// Number the faces like a real die: opposite faces sum to 21
+let next = 1;
+for (const f of FACES) {
+  if (f.num) continue;
+  const opp = FACES.find(g => g !== f && dot(g.n, f.n) < -0.999);
+  f.num = next; opp.num = 21 - next; next++;
+}
+
+/* Rotation helpers (3×3 matrices as arrays of rows) */
+function rotAxis(axis, ang) {
+  const [x, y, z] = axis, c = Math.cos(ang), s = Math.sin(ang), C = 1 - c;
+  return [
+    [x * x * C + c,     x * y * C - z * s, x * z * C + y * s],
+    [y * x * C + z * s, y * y * C + c,     y * z * C - x * s],
+    [z * x * C - y * s, z * y * C + x * s, z * z * C + c]
+  ];
+}
+function mul(A, B) {
+  return A.map(row => [0, 1, 2].map(j => row[0] * B[0][j] + row[1] * B[1][j] + row[2] * B[2][j]));
+}
+const apply = (M, v) => [dot(M[0], v), dot(M[1], v), dot(M[2], v)];
+
+/* The landing pose: a rotation that turns the "20" face straight at the
+   camera (+z) with one corner pointing up, so the number reads upright. */
+const FACE20 = FACES.find(f => f.num === 20);
+const fwd = FACE20.n;
+const upV = norm(sub(VERTS[FACE20.v[0]], fwd.map(x => x * dot(VERTS[FACE20.v[0]], fwd))));
+const down = upV.map(x => -x);            // screen y grows downward
+const right = cross(down, fwd);
+const TARGET = [right, down, fwd];
+
+/* The tumble. We know the speed at every moment; integrating it gives the
+   total angle still to turn before landing. Remaining angle → 0 exactly at
+   LAND, so whatever the spin, the die finishes on 20. */
+const LAND = 9.8, STEP = 0.001, NSTEP = Math.round(LAND / STEP);
+const AX1 = norm([0.6, 1, 0.25]), AX2 = norm([1, -0.3, 0.5]);
+function spinSpeed(t) {
+  if (t < 7) return 0.8;                                   // slow, ominous
+  if (t < 9.3) return 0.8 + 6.2 * ease.inOutQuad((t - 7) / 2.3); // speeding up
+  return 7;                                                // flat out until it hits
+}
+const cum = new Float64Array(NSTEP + 1);
+for (let i = 0; i < NSTEP; i++) cum[i + 1] = cum[i] + spinSpeed(i * STEP) * STEP;
+function remainingAngle(t) {
+  if (t >= LAND) return 0;
+  if (t <= 0) return cum[NSTEP];
+  const x = t / STEP, i = Math.floor(x);
+  return cum[NSTEP] - (cum[i] + (cum[i + 1] - cum[i]) * (x - i));
+}
+const LIGHT = norm([-0.45, -0.6, 0.66]);
+const HALF = norm([LIGHT[0], LIGHT[1], LIGHT[2] + 1]);
+
+/* =====================================================================
+   6. CANVAS SETUP
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const stage = $('stage');
+const cv = $('scene'), ctx = cv.getContext('2d');
+const wallCv = document.createElement('canvas');
+const lightCv = document.createElement('canvas'), lg = lightCv.getContext('2d');
+let W = 2, H = 2;
+const TORCH = [{ x: 0.075, y: 0.5 }, { x: 0.925, y: 0.5 }];
+
+function buildWall() {
+  wallCv.width = W; wallCv.height = H;
+  const g = wallCv.getContext('2d'), rng = mulberry(21);
+  g.fillStyle = '#14110e'; g.fillRect(0, 0, W, H);
+  const rows = 9, rh = H / rows, m = Math.max(1.5, H * 0.004);
+  const rgb = (v, gk, bk) => `rgb(${Math.round(v)},${Math.round(v * gk)},${Math.round(v * bk)})`;
+  for (let r = 0; r < rows; r++) {
+    let x = -rng() * W * 0.12;
+    while (x < W) {
+      const bw = W * (0.1 + rng() * 0.09), v = 62 + rng() * 38, y0 = r * rh;
+      const grd = g.createLinearGradient(0, y0, 0, y0 + rh);
+      grd.addColorStop(0, rgb(v + 18, 0.93, 0.84));
+      grd.addColorStop(1, rgb(v - 14, 0.92, 0.82));
+      g.fillStyle = grd; g.fillRect(x + m, y0 + m, bw - 2 * m, rh - 2 * m);
+      for (let k = 0; k < 26; k++) {
+        const s = (0.5 + rng() * 1.8) * H / 700;
+        g.fillStyle = rng() < 0.5 ? 'rgba(0,0,0,0.25)' : 'rgba(255,240,220,0.08)';
+        g.fillRect(x + m + rng() * (bw - 2 * m), y0 + m + rng() * (rh - 2 * m), s * 2, s * 2);
+      }
+      x += bw;
+    }
+  }
+}
+function resize() {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const r = stage.getBoundingClientRect();
+  W = Math.max(2, Math.round(r.width * dpr)); H = Math.max(2, Math.round(W * 9 / 16));
+  cv.width = W; cv.height = H; lightCv.width = W; lightCv.height = H;
+  buildWall();
+}
+new ResizeObserver(resize).observe(stage);
+resize();
+
+/* Particles, generated once from a seed */
+const rngP = mulberry(99);
+const EMBERS = Array.from({ length: 70 }, (_, i) => ({
+  side: i % 2, T: 2.2 + rngP() * 2.4, ph: rngP(), sway: 2 + rngP() * 5,
+  amp: 0.008 + rngP() * 0.022, rise: 0.3 + rngP() * 0.3, size: 0.6 + rngP() * 1.4, drift: (rngP() - 0.5) * 0.06
+}));
+const DUST = Array.from({ length: 46 }, () => ({
+  vx: rngP() * 2 - 1, vy: -(0.1 + rngP() * 0.6), size: rngP(), life: 0.8 + rngP() * 0.7
+}));
+
+/* =====================================================================
+   7. PAINT: turns scene numbers (+ t) into pixels
+   ===================================================================== */
+// Torch flicker: several sine waves at unrelated speeds read as "random" fire
+function flicker(t, seed) {
+  return 0.82 + 0.07 * Math.sin(t * 11.3 + seed) + 0.05 * Math.sin(t * 23.7 + seed * 2.1)
+       + 0.04 * Math.sin(t * 5.1 + seed * 3.7) + 0.03 * Math.sin(t * 41.9 + seed * 1.3);
+}
+// Ignition: the flame catches, sputters, then holds
+function ignite(p) {
+  if (p <= 0) return 0;
+  if (p >= 1) return 1;
+  return p < 0.65 ? p * (Math.sin(p * 38) > 0.2 ? 1 : 0.35) : p;
+}
+function torchLevels(t) {
+  const L = ignite(scene.torchL) * flicker(t, 1);
+  const R = ignite(scene.torchR) * flicker(t, 4);
+  return { L, R, avg: (L + R) / 2 };
+}
+const flashAmount = () => (scene.impact > 0 && scene.impact < 1) ? Math.pow(1 - scene.impact, 4) : 0;
+
+function glow(g, x, y, r, I, col) {
+  const grd = g.createRadialGradient(x, y, 0, x, y, r);
+  grd.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${0.95 * I})`);
+  grd.addColorStop(0.45, `rgba(${Math.round(col[0] * 0.7)},${Math.round(col[1] * 0.55)},${Math.round(col[2] * 0.5)},${0.35 * I})`);
+  grd.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, W, H);
+}
+
+function drawTorch(x, y, I, t, seed) {
+  // Iron bracket and cup
+  ctx.fillStyle = '#17120e';
+  ctx.fillRect(x - 0.004 * W, y, 0.008 * W, 0.11 * H);
+  ctx.beginPath();
+  ctx.moveTo(x - 0.016 * W, y - 0.005 * H); ctx.lineTo(x + 0.016 * W, y - 0.005 * H);
+  ctx.lineTo(x + 0.007 * W, y + 0.03 * H); ctx.lineTo(x - 0.007 * W, y + 0.03 * H);
+  ctx.closePath(); ctx.fillStyle = '#231b15'; ctx.fill();
+  ctx.strokeStyle = `rgba(255,150,80,${0.35 * I})`; ctx.lineWidth = Math.max(1, H / 500); ctx.stroke();
+  if (I <= 0.01) return;
+  // Flame: three teardrops, outer red to inner white-hot, added together with 'lighter'
+  ctx.globalCompositeOperation = 'lighter';
+  const sway = Math.sin(t * 6.1 + seed) * 0.004 * W + Math.sin(t * 13.7 + seed) * 0.002 * W;
+  const layers = [
+    { h: 0.105, w: 0.021, c: [255, 80, 25], a: 0.55 },
+    { h: 0.078, w: 0.014, c: [255, 155, 55], a: 0.7 },
+    { h: 0.048, w: 0.008, c: [255, 235, 170], a: 0.95 }
+  ];
+  for (const L of layers) {
+    const h = L.h * H * I * (0.85 + 0.15 * flicker(t * 1.7, seed + L.h * 10));
+    const w = L.w * W * (0.85 + 0.15 * I);
+    const tx = x + sway * (L.h / 0.105), ty = y - 0.005 * H - h, by = y - 0.005 * H;
+    const grd = ctx.createRadialGradient(x, by - h * 0.25, 0, x, by - h * 0.25, h);
+    grd.addColorStop(0, `rgba(${L.c[0]},${L.c[1]},${L.c[2]},${L.a * I})`);
+    grd.addColorStop(1, `rgba(${L.c[0]},${L.c[1]},${L.c[2]},0)`);
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.moveTo(tx, ty);
+    ctx.bezierCurveTo(x + w * 0.35, by - h * 0.5, x + w, by - w * 0.3, x, by + w * 0.15);
+    ctx.bezierCurveTo(x - w, by - w * 0.3, x - w * 0.35, by - h * 0.5, tx, ty);
+    ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+function drawEmbers(t, lv) {
+  ctx.globalCompositeOperation = 'lighter';
+  for (const e of EMBERS) {
+    const I = e.side ? lv.R : lv.L;
+    if (I <= 0.02) continue;
+    const life = (t / e.T + e.ph) % 1;           // each ember loops forever, pure function of t
+    const tp = TORCH[e.side];
+    const x = (tp.x + e.drift * life + Math.sin(life * e.sway * 2 + e.ph * 9) * e.amp) * W;
+    const y = (tp.y - 0.08 - life * e.rise) * H;
+    const a = Math.sin(life * Math.PI) * (1 - life) * I * 1.3;
+    const r = e.size * (1 - life * 0.5) * H / 520;
+    ctx.fillStyle = `rgba(255,${Math.round(140 + 60 * (1 - life))},60,${a})`;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+let VIS_SIGN = 1;
+function projectDie(M, cx, cy, R) {
+  const D = 4.5;                                    // camera distance: mild perspective
+  return VERTS.map(v => {
+    const p = apply(M, v), s = D / (D - p[2]);
+    return [cx + p[0] * R * s, cy + p[1] * R * s];
+  });
+}
+const triArea2 = (p0, p1, p2) => (p1[0] - p0[0]) * (p2[1] - p0[1]) - (p1[1] - p0[1]) * (p2[0] - p0[0]);
+// Which winding means "facing us"? Ask the 20 face in its landing pose, which faces us by construction.
+{ const P = projectDie(TARGET, 0, 0, 100), v = FACE20.v; VIS_SIGN = Math.sign(triArea2(P[v[0]], P[v[1]], P[v[2]])); }
+
+const Q0 = [0, -100], Q1 = [-86.6, 50], Q2 = [86.6, 50];   // a reference triangle for drawing numbers
+
+function drawDie(t, lv, fl) {
+  const s = scene;
+  const k = s.diceIn * (0.35 + 0.65 * lv.avg) * (1 - 0.35 * s.dieDim) + fl * 0.6;
+  if (k <= 0.005) return;
+  const cx = W * 0.5, cy = H * (0.5 - 0.12 * s.dieDim);
+  const R = H * 0.2 * (1 + 0.22 * s.drop) * (1 - 0.12 * s.dieDim);
+
+  // Orientation = landing pose × remaining spin. Spin hits 0 at LAND → exactly the landing pose.
+  const A = remainingAngle(t);
+  let M = mul(TARGET, mul(rotAxis(AX1, A), rotAxis(AX2, A * 0.37)));
+  if (t > LAND) {                                  // a damped wobble as it settles
+    const d = t - LAND, w = 0.16 * Math.exp(-d * 6) * Math.sin(d * 26);
+    M = mul(rotAxis([1, 0, 0], w), M);
+  }
+  const P = projectDie(M, cx, cy, R);
+  const glowAmt = s.glow20 * (1 - 0.3 * s.dieDim) * (0.85 + 0.15 * Math.sin(t * 3));
+
+  ctx.lineJoin = 'round';
+  for (const f of FACES) {
+    const [a, b, c] = f.v;
+    let p0 = P[a], p1 = P[b], p2 = P[c];
+    if (triArea2(p0, p1, p2) * VIS_SIGN <= 0) continue;    // back face: skip
+
+    // Lighting: how squarely the face meets the light, plus a glossy highlight
+    const n = apply(M, f.n);
+    const diff = Math.max(0, dot(n, LIGHT));
+    const spec = Math.pow(Math.max(0, dot(n, HALF)), 24) * 0.6 * k;
+    const l = (0.14 + 0.95 * diff) * k;
+    const r = Math.min(255, 150 * l + 255 * spec + 60 * fl);
+    const g = Math.min(255, 24 * l + 220 * spec + 35 * fl);
+    const bl = Math.min(255, 28 * l + 190 * spec + 15 * fl);
+    ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.closePath();
+    ctx.fillStyle = `rgb(${r | 0},${g | 0},${bl | 0})`; ctx.fill();
+    ctx.strokeStyle = `rgba(255,170,120,${0.16 * k})`; ctx.lineWidth = Math.max(1, H / 600); ctx.stroke();
+
+    // The number: map the reference triangle onto this face's projected triangle,
+    // then draw ordinary text in reference space. It skews and shrinks with the face.
+    const alpha = clamp01((n[2] - 0.15) * 1.6) * Math.min(1, k * 1.2);
+    if (alpha <= 0.01) continue;
+    let m = affine(p0, p1, p2);
+    if (m[0] * m[3] - m[1] * m[2] < 0) m = affine(p0, p2, p1);   // keep text unmirrored
+    ctx.save();
+    ctx.setTransform(m[0], m[1], m[2], m[3], m[4], m[5]);
+    const is20 = f.num === 20;
+    if (is20 && glowAmt > 0) { ctx.shadowColor = 'rgba(255,205,110,0.95)'; ctx.shadowBlur = 26 * glowAmt * H / 700; }
+    ctx.fillStyle = is20 && glowAmt > 0
+      ? `rgba(255,${Math.round(214 + 30 * glowAmt)},${Math.round(120 + 80 * glowAmt)},${alpha})`
+      : `rgba(222,184,98,${alpha})`;
+    ctx.font = '46px "IM Fell English", Georgia, serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(f.num === 6 || f.num === 9 ? f.num + '.' : String(f.num), 0, 10);
+    ctx.restore();
+  }
+}
+// Solve for the 2D affine transform sending Q0,Q1,Q2 → p0,p1,p2
+function affine(p0, p1, p2) {
+  const q1 = [Q1[0] - Q0[0], Q1[1] - Q0[1]], q2 = [Q2[0] - Q0[0], Q2[1] - Q0[1]];
+  const u = [p1[0] - p0[0], p1[1] - p0[1]], v = [p2[0] - p0[0], p2[1] - p0[1]];
+  const det = q1[0] * q2[1] - q2[0] * q1[1];
+  const a = (u[0] * q2[1] - v[0] * q1[1]) / det, c = (-u[0] * q2[0] + v[0] * q1[0]) / det;
+  const b = (u[1] * q2[1] - v[1] * q1[1]) / det, d = (-u[1] * q2[0] + v[1] * q1[0]) / det;
+  return [a, b, c, d, p0[0] - (a * Q0[0] + c * Q0[1]), p0[1] - (b * Q0[0] + d * Q0[1])];
+}
+
+function drawDust(t) {
+  if (t < LAND) return;
+  const d = t - LAND, s = scene;
+  const R = H * 0.2 * (1 + 0.22 * s.drop) * (1 - 0.12 * s.dieDim);
+  const ox = W * 0.5, oy = H * (0.5 - 0.12 * s.dieDim) + R * 0.9;
+  const spread = (1 - Math.exp(-4 * d)) / 4;      // fast burst that slows (air drag)
+  for (const p of DUST) {
+    if (d > p.life) continue;
+    const k = d / p.life;
+    const x = ox + p.vx * W * 0.6 * spread;
+    const y = oy + p.vy * H * 0.8 * spread + 0.05 * H * d * d;
+    const r = (4 + p.size * 18 * k + 6 * k) * H / 700;
+    const a = 0.32 * (1 - k);
+    const grd = ctx.createRadialGradient(x, y, 0, x, y, r);
+    grd.addColorStop(0, `rgba(160,132,100,${a})`); grd.addColorStop(1, 'rgba(160,132,100,0)');
+    ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function paintCanvas(t, lv) {
+  const fl = flashAmount();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(wallCv, 0, 0);
+
+  // Lighting pass: build a light map (dark ambient + torch pools), then MULTIPLY it over the wall
+  lg.globalCompositeOperation = 'source-over';
+  lg.fillStyle = 'rgb(12,9,8)'; lg.fillRect(0, 0, W, H);
+  lg.globalCompositeOperation = 'lighter';
+  glow(lg, TORCH[0].x * W, TORCH[0].y * H, 0.62 * W * (0.9 + 0.1 * lv.L), lv.L, [255, 165, 85]);
+  glow(lg, TORCH[1].x * W, TORCH[1].y * H, 0.62 * W * (0.9 + 0.1 * lv.R), lv.R, [255, 165, 85]);
+  if (fl > 0) glow(lg, W * 0.5, H * 0.55, 0.7 * W, fl, [255, 210, 140]);
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.drawImage(lightCv, 0, 0);
+  ctx.globalCompositeOperation = 'source-over';
+
+  drawTorch(TORCH[0].x * W, TORCH[0].y * H, lv.L, t, 1);
+  drawTorch(TORCH[1].x * W, TORCH[1].y * H, lv.R, t, 4);
+  drawEmbers(t, lv);
+  drawDie(t, lv, fl);
+  drawDust(t);
+
+  const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, W * 0.62);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.78)');
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+}
+
+/* ---------- Iron gate, built from loops ---------- */
+(function buildGate() {
+  const out = [`<defs>
+    <linearGradient id="barV" x1="0" x2="1"><stop offset="0" stop-color="#121113"/><stop offset=".42" stop-color="#5d5751"/><stop offset=".58" stop-color="#38332f"/><stop offset="1" stop-color="#0d0c0e"/></linearGradient>
+    <linearGradient id="barH" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#121113"/><stop offset=".42" stop-color="#5d5751"/><stop offset=".58" stop-color="#38332f"/><stop offset="1" stop-color="#0d0c0e"/></linearGradient>
+    <radialGradient id="rivet" cx=".35" cy=".35" r=".7"><stop offset="0" stop-color="#8c837b"/><stop offset=".5" stop-color="#3c3734"/><stop offset="1" stop-color="#0d0c0d"/></radialGradient>
+    <filter id="rust" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 .45  0 0 0 0 .2  0 0 0 0 .08  1.6 0 0 0 -.85" result="r"/>
+      <feComposite in="r" in2="SourceGraphic" operator="atop"/>
+    </filter></defs><g filter="url(#rust)">`];
+  const xs = Array.from({ length: 10 }, (_, i) => 8 + i * 16), ys = [22, 48, 74];
+  for (const x of xs) {
+    out.push(`<rect x="${x - 1.7}" y="0" width="3.4" height="84" fill="url(#barV)"/>`);
+    out.push(`<polygon points="${x - 1.7},84 ${x + 1.7},84 ${x},90" fill="#2b2826"/>`);
+  }
+  for (const y of ys) out.push(`<rect x="0" y="${y - 1.5}" width="160" height="3" fill="url(#barH)"/>`);
+  for (const x of xs) for (const y of ys) out.push(`<circle cx="${x}" cy="${y}" r="2.1" fill="url(#rivet)"/>`);
+  out.push('</g>');
+  $('gateSvg').innerHTML = out.join('');
+})();
+
+/* ---------- Banner flourishes: one design, mirrored into four corners ---------- */
+const FLOURISH = '<path d="M3 37 Q3 3 37 3"/><path d="M9 37 Q9 9 37 9"/><path d="M37 3 C42 3 42 10 37 10 C34 10 33 7 35 6"/><path d="M3 37 C3 42 10 42 10 37 C10 34 7 33 6 35"/>';
+for (const c of ['tl', 'tr', 'bl', 'br']) {
+  $('banner').insertAdjacentHTML('beforeend', `<svg class="flourish ${c}" viewBox="0 0 44 44" aria-hidden="true">${FLOURISH}</svg>`);
+}
+const flourishPaths = [...document.querySelectorAll('.flourish path')];
+flourishPaths.forEach(p => { p.setAttribute('pathLength', '1'); p.style.strokeDasharray = '1 1'; p.style.strokeDashoffset = '1'; });
+
+function paintDOM(t, lv) {
+  const s = scene;
+  $('lintel').style.filter = `brightness(${(0.2 + 0.85 * lv.avg).toFixed(3)})`;
+  $('inscription').style.opacity = s.lintelIn;
+  $('inscription').style.letterSpacing = (0.55 - 0.25 * s.lintelIn).toFixed(3) + 'em';
+  $('lintelOut').style.opacity = 1 - s.lintelOut;
+
+  // Gate: rise (with chain judder) and slam are combined here, never fought over
+  let rise = s.gateRise;
+  if (rise > 0 && rise < 1) rise += 0.014 * Math.sin(rise * Math.PI * 7) * Math.sin(rise * Math.PI);
+  $('gate').style.transform = `translateY(${((-rise + s.gateSlam) * 100).toFixed(3)}%)`;
+  $('gate').style.filter = `brightness(${(0.16 + 0.95 * lv.avg).toFixed(3)})`;
+
+  // Scroll: open width minus closing, rods ride the edges
+  const w = s.scrollOpen * (1 - s.scrollClose), inset = 50 - 50 * w;
+  $('scroll').style.opacity = Math.min(1, w * 10);
+  $('scroll').style.filter = `brightness(${(0.7 + 0.35 * lv.avg).toFixed(3)})`;
+  $('scrollPaper').style.clipPath = `inset(0 ${inset}% 0 ${inset}%)`;
+  $('rodL').style.left = inset + '%';
+  $('rodR').style.left = (100 - inset) + '%';
+  $('line1').style.opacity = s.line1 * (1 - s.line1Out);
+  $('line1').style.transform = `translate(-50%, calc(-50% + ${((1 - s.line1) * 0.8).toFixed(3)}cqw))`;
+  $('line2').style.opacity = s.line2;
+  $('line2').style.transform = `translate(-50%, calc(-50% + ${((1 - s.line2) * 0.8).toFixed(3)}cqw))`;
+
+  // Title banner unrolls from the centre, then the title is stamped on
+  const b = 50 - 50 * s.banner;
+  $('bannerClip').style.clipPath = `inset(-10% ${b}% -10% ${b}%)`;
+  $('title').style.opacity = Math.min(1, s.stamp * 1.8);
+  $('title').style.transform = `scale(${(1.5 - 0.5 * s.stamp).toFixed(4)})`;
+  $('title').style.filter = `blur(${((1 - s.stamp) * 4).toFixed(2)}px)`;
+  for (const p of flourishPaths) p.style.strokeDashoffset = 1 - s.flourish;
+
+  $('tagline').style.opacity = s.tagline;
+  $('tagline').style.transform = `translate(-50%, calc(-50% + ${((1 - s.tagline) * 1).toFixed(3)}cqw))`;
+  $('coming').style.opacity = s.coming;
+
+  $('flash').style.opacity = (flashAmount() * 0.85).toFixed(3);
+  $('black').style.opacity = s.fadeOut;
+
+  // Camera shake: decaying amplitude × fast wobble. Still a pure function of t.
+  let amp = 0;
+  if (s.impact > 0 && s.impact < 1) amp += 1.4 * Math.pow(1 - s.impact, 2);
+  if (s.stamp > 0 && s.stamp < 1) amp += 0.35 * Math.pow(1 - s.stamp, 2);
+  if (s.slamShake > 0 && s.slamShake < 1) amp += 1.0 * Math.pow(1 - s.slamShake, 2);
+  if (reduceMotion) amp = 0;
+  const dx = amp * Math.sin(t * 97.3) * Math.cos(t * 41.1), dy = amp * Math.cos(t * 89.7) * Math.sin(t * 53.9);
+  $('world').style.transform = `translate(${dx.toFixed(3)}%, ${dy.toFixed(3)}%)`;
+}
+
+function paint(t) {
+  evaluate(t);
+  const lv = torchLevels(t);
+  paintCanvas(t, lv);
+  paintDOM(t, lv);
+}
+
+/* =====================================================================
+   8. TIMELINE LANES (built from the same tracks list)
+   ===================================================================== */
+const lanesEl = $('lanes');
+const groupNames = [...new Set(tracks.map(tr => tr.group))];
+for (const name of groupNames) {
+  const row = document.createElement('div');
+  row.className = 'lane';
+  row.innerHTML = `<span class="lane-name">${name}</span><div class="track"></div>`;
+  const trackEl = row.querySelector('.track');
+  for (const tr of tracks.filter(x => x.group === name)) {
+    const seg = document.createElement('div');
+    seg.className = 'seg';
+    seg.title = `${tr.key}: ${tr.start.toFixed(1)}–${(tr.start + tr.duration).toFixed(2)} s`;
+    seg.style.left = (tr.start / DURATION * 100) + '%';
+    seg.style.width = (tr.duration / DURATION * 100) + '%';
+    trackEl.append(seg);
+    tr.seg = seg;
+  }
+  lanesEl.append(row);
+}
+for (const s of [0, 3, 6, 9, 12, 15]) {
+  const span = document.createElement('span');
+  span.textContent = s + 's';
+  span.style.left = (s / DURATION * 100) + '%';
+  $('ticks').append(span);
+}
+
+/* =====================================================================
+   9. PLAYBACK
+   ===================================================================== */
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let t = reduceMotion ? 13.9 : 0;
+let playing = !reduceMotion;
+let last = null;
+
+function updateUI() {
+  $('readout').textContent = `t = ${t.toFixed(2)} s`;
+  $('scrub').value = Math.round(t * 1000);
+  $('playBtn').textContent = playing ? 'Pause' : 'Play';
+  $('replayOverlay').hidden = !(t >= DURATION);
+  lanesEl.style.setProperty('--f', t / DURATION);
+  for (const tr of tracks) tr.seg.classList.toggle('on', t >= tr.start && t <= tr.start + tr.duration);
+}
+function frame(now) {
+  if (last !== null && playing) {
+    t += Math.min(0.1, (now - last) / 1000);   // cap big jumps (e.g. a background tab)
+    if (t >= DURATION) { t = DURATION; playing = false; }
+  }
+  last = now;
+  paint(t);
+  updateUI();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+function replay() { t = 0; playing = true; }
+$('replayBtn').addEventListener('click', replay);
+$('replayOverlay').addEventListener('click', replay);
+$('playBtn').addEventListener('click', () => { if (t >= DURATION) { replay(); return; } playing = !playing; });
+$('scrub').addEventListener('input', e => { playing = false; t = e.target.value / 1000; });
+</script>
+
+</body></html>

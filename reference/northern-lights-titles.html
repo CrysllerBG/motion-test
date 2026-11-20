@@ -1,0 +1,418 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Northern Lights Titles</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Italiana&family=Jost:wght@300;400;500&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* Layout: one cinematic 16:9 stage, playback controls, then a track-lane timeline that mirrors the code */
+:root {
+  --night: #05070d;
+  --panel: #0b101a;
+  --rule: #1d2533;
+  --ink: #e8eef2;
+  --muted: #8794a3;
+  --aurora: #5fe3b4;
+  --aurora-2: #7f72f2;
+  --display: "Italiana", "Didot", Georgia, serif;
+  --body: "Jost", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--night);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.wrap {
+  max-width: 980px;
+  margin: 0 auto;
+  padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 18px;
+}
+
+/* ---------- The stage ---------- */
+.stage {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  overflow: hidden;
+  border-radius: 6px;
+  container-type: inline-size;
+  isolation: isolate;
+}
+.sky {
+  position: absolute; inset: 0;
+  background: radial-gradient(120% 90% at 50% 110%, #0d1a2b 0%, #070b14 55%, #020306 100%);
+  opacity: 0;
+}
+.glow {
+  position: absolute;
+  width: 70%; height: 70%;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0;
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+.glow.a { left: 5%;  top: -10%; background: radial-gradient(closest-side, rgba(95,227,180,.55), transparent); }
+.glow.b { right: 0%; top: 5%;  background: radial-gradient(closest-side, rgba(127,114,242,.45), transparent); }
+
+.content, .composition {
+  position: absolute; inset: 0;
+  display: grid;
+  place-items: center;
+}
+.composition { align-content: center; gap: 2.2cqw; }
+
+.title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 7.2cqw;
+  letter-spacing: .16em;
+  line-height: 1;
+  padding-left: .16em; /* balances trailing letter-spacing so the word sits centred */
+  white-space: nowrap;
+  color: var(--ink);
+  text-shadow: 0 0 2cqw rgba(95,227,180,.25);
+}
+.ch { display: inline-block; opacity: 0; will-change: transform, opacity, filter; }
+
+.rule { width: 46cqw; height: 2px; display: block; overflow: visible; }
+.rule line { stroke: var(--aurora); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+
+.subtitle {
+  margin: 0;
+  font-family: var(--body);
+  font-weight: 300;
+  font-size: 1.7cqw;
+  letter-spacing: .5em;
+  padding-left: .5em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0;
+}
+
+.replay-overlay {
+  position: absolute;
+  right: 2.5cqw; bottom: 2.5cqw;
+  font: 500 13px/1 var(--body);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 999px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+/* ---------- Controls ---------- */
+.controls {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+}
+button.ctl {
+  font: 500 13px/1 var(--body);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 10px 14px;
+  cursor: pointer;
+  min-width: 84px;
+}
+button.ctl:hover, .replay-overlay:hover { border-color: var(--aurora); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--aurora); outline-offset: 2px; }
+#scrub { flex: 1 1 220px; min-width: 0; accent-color: var(--aurora); }
+.readout {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--aurora);
+  font-variant-numeric: tabular-nums;
+  min-width: 9ch;
+  text-align: right;
+}
+
+/* ---------- Timeline lanes ---------- */
+.lanes-card {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+}
+.lanes-head {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap;
+}
+.lanes-head h2 {
+  margin: 0;
+  font: 500 12px/1.2 var(--body);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.lanes-head code { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.lanes { --label: 84px; --gap: 12px; position: relative; display: grid; gap: 6px; }
+.lane { display: grid; grid-template-columns: var(--label) 1fr; gap: var(--gap); align-items: center; }
+.lane-name { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.track { position: relative; height: 14px; background: rgba(255,255,255,.03); border-radius: 2px; }
+.bar {
+  position: absolute; top: 0; bottom: 0;
+  background: rgba(95,227,180,.22);
+  border: 1px solid rgba(95,227,180,.35);
+  border-radius: 2px;
+  transition: background .15s;
+}
+.bar.on { background: rgba(95,227,180,.6); }
+.ticks { display: grid; grid-template-columns: var(--label) 1fr; gap: var(--gap); }
+.tick-row { position: relative; height: 16px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.tick-row span { position: absolute; transform: translateX(-50%); font-variant-numeric: tabular-nums; }
+.tick-row span:first-child { transform: none; }
+.tick-row span:last-child { transform: translateX(-100%); }
+.playhead {
+  position: absolute; top: -4px; bottom: 18px; width: 1px;
+  background: var(--aurora-2);
+  box-shadow: 0 0 6px var(--aurora-2);
+  left: calc(var(--label) + var(--gap) + (100% - var(--label) - var(--gap)) * var(--f, 0));
+  pointer-events: none;
+}
+
+.note { margin: 0; max-width: 65ch; color: var(--muted); }
+.note strong { color: var(--ink); font-weight: 500; }
+
+@media (max-width: 480px) {
+  .lanes { --label: 68px; --gap: 8px; }
+  .lane-name { font-size: 12px; }
+}
+</style>
+
+<div class="wrap">
+  <!-- The stage: every element starts invisible; the timeline below brings each one in. -->
+  <div class="stage" id="stage">
+    <div class="sky" id="sky"></div>
+    <div class="glow a" id="glowA"></div>
+    <div class="glow b" id="glowB"></div>
+    <div class="content" id="content">
+      <div class="composition" id="composition">
+        <h1 class="title" id="title" aria-label="Northern Lights"></h1>
+        <svg class="rule" viewBox="0 0 600 2" preserveAspectRatio="none" aria-hidden="true">
+          <!-- Two lines that both start at the centre, so the rule draws outward in both directions -->
+          <line id="lineL" x1="300" y1="1" x2="0"   y2="1" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1"></line>
+          <line id="lineR" x1="300" y1="1" x2="600" y2="1" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1"></line>
+        </svg>
+        <p class="subtitle" id="subtitle">A short film</p>
+      </div>
+    </div>
+    <button class="replay-overlay" id="replayOverlay" hidden>Replay</button>
+  </div>
+
+  <div class="controls">
+    <button class="ctl" id="playBtn">Pause</button>
+    <button class="ctl" id="replayBtn">Replay</button>
+    <input type="range" id="scrub" min="0" max="6000" step="10" value="0" aria-label="Scrub through the sequence">
+    <span class="readout" id="readout">t = 0.00 s</span>
+  </div>
+
+  <section class="lanes-card" aria-label="Timeline">
+    <div class="lanes-head">
+      <h2>Timeline</h2>
+      <code>render(t) runs every track, every frame</code>
+    </div>
+    <div class="lanes" id="lanes">
+      <div class="playhead" id="playhead"></div>
+    </div>
+    <div class="ticks">
+      <span></span>
+      <div class="tick-row" id="ticks"></div>
+    </div>
+  </section>
+
+  <p class="note"><strong>Drag the scrubber</strong> to stop time at any moment. The picture you see is computed from one number, <code>t</code>, so jumping to 2.4 s looks exactly the same as playing up to it. That property is what makes code-driven motion easy to edit, preview and render to video frame by frame.</p>
+</div>
+
+<script>
+/* =====================================================================
+   1. EASING FUNCTIONS
+   Each takes linear progress p (0 → 1) and returns shaped progress.
+   Real objects don't move at constant speed; they accelerate and settle.
+   ===================================================================== */
+const ease = {
+  linear:    p => p,
+  outCubic:  p => 1 - Math.pow(1 - p, 3),                      // fast start, gentle landing
+  inOutQuad: p => p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2, // slow, fast, slow
+  inQuad:    p => p * p                                         // slow start, speeds up (good for exits)
+};
+
+/* =====================================================================
+   2. THE TIMELINE ENGINE
+   A "track" is: when it starts, how long it lasts, how it eases,
+   and an update() that applies progress to the page.
+   ===================================================================== */
+const DURATION = 6.0;   // seconds
+const tracks = [];
+
+function track(group, start, duration, easing, update) {
+  tracks.push({ group, start, duration, easing, update });
+}
+
+// Draw the whole scene for time t. Nothing is "remembered" between frames:
+// every track recomputes its own state from t. That's why scrubbing works.
+function render(t) {
+  for (const tr of tracks) {
+    const raw = (t - tr.start) / tr.duration;
+    const p = Math.min(Math.max(raw, 0), 1);   // clamp: before start = 0, after end = 1
+    tr.update(tr.easing(p), t);
+  }
+}
+
+/* =====================================================================
+   3. THE CHOREOGRAPHY
+   Reading these lines top to bottom is reading the storyboard.
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Background fades up out of black
+track('Background', 0.0, 1.0, ease.inOutQuad, p => {
+  $('sky').style.opacity = p;
+});
+
+// Aurora glow: fades in, then keeps drifting. It uses raw t for the drift,
+// so it never "finishes"; ambient motion keeps a held frame alive.
+track('Glow', 0.3, 1.7, ease.inOutQuad, (p, t) => {
+  const dx = Math.sin(t * 0.7) * 6, dy = Math.cos(t * 0.5) * 4;
+  $('glowA').style.opacity = p * 0.9;
+  $('glowB').style.opacity = p * 0.8;
+  $('glowA').style.transform = `translate(${dx}%, ${dy}%)`;
+  $('glowB').style.transform = `translate(${-dx}%, ${-dy * 0.6}%)`;
+});
+
+// The line draws itself. With pathLength="1" and a dash of length 1,
+// moving stroke-dashoffset from 1 to 0 slides the visible dash into place.
+track('Line', 0.8, 1.2, ease.inOutQuad, p => {
+  const off = 1 - p;
+  $('lineL').setAttribute('stroke-dashoffset', off);
+  $('lineR').setAttribute('stroke-dashoffset', off);
+});
+
+// Title: one track per letter. The stagger is the single line `1.5 + i * 0.06`.
+const TITLE = 'NORTHERN LIGHTS';
+[...TITLE].forEach((ch, i) => {
+  const s = document.createElement('span');
+  s.className = 'ch';
+  s.setAttribute('aria-hidden', 'true');
+  s.textContent = ch === ' ' ? ' ' : ch;
+  $('title').append(s);
+
+  track('Title', 1.5 + i * 0.06, 0.7, ease.outCubic, p => {
+    s.style.opacity = p;
+    s.style.transform = `translateY(${(1 - p) * 0.6}em)`;
+    s.style.filter = reduceMotion ? 'none' : `blur(${(1 - p) * 6}px)`;
+  });
+});
+
+// Subtitle slides up beneath the line
+track('Subtitle', 2.8, 0.8, ease.outCubic, p => {
+  $('subtitle').style.opacity = p;
+  $('subtitle').style.transform = `translateY(${(1 - p) * 14}px)`;
+});
+
+// Hold: a barely-there push-in so the frame "breathes" instead of freezing
+track('Hold', 3.6, 1.9, ease.inOutQuad, p => {
+  $('composition').style.transform = `scale(${1 + p * 0.015})`;
+});
+
+// Fade out. It owns a different element (#content) than the hold (#composition),
+// so the two tracks never fight over the same property.
+track('Fade out', 5.5, 0.5, ease.inQuad, p => {
+  $('content').style.opacity = 1 - p;   // the glow keeps drifting behind; only the type leaves
+});
+
+/* =====================================================================
+   4. THE TIMELINE LANES (the visual below the stage)
+   Built from the same tracks array, so the diagram can't drift from the code.
+   ===================================================================== */
+const groups = [];
+for (const tr of tracks) {
+  let g = groups.find(x => x.name === tr.group);
+  if (!g) { g = { name: tr.group, start: tr.start, end: tr.start + tr.duration }; groups.push(g); }
+  g.start = Math.min(g.start, tr.start);
+  g.end = Math.max(g.end, tr.start + tr.duration);
+}
+const lanesEl = $('lanes');
+for (const g of groups) {
+  const row = document.createElement('div');
+  row.className = 'lane';
+  row.innerHTML = `<span class="lane-name">${g.name}</span><div class="track"><div class="bar"></div></div>`;
+  const bar = row.querySelector('.bar');
+  bar.style.left = (g.start / DURATION * 100) + '%';
+  bar.style.width = ((g.end - g.start) / DURATION * 100) + '%';
+  g.bar = bar;
+  lanesEl.append(row);
+}
+const ticksEl = $('ticks');
+for (let s = 0; s <= DURATION; s++) {
+  const span = document.createElement('span');
+  span.textContent = s + 's';
+  span.style.left = (s / DURATION * 100) + '%';
+  ticksEl.append(span);
+}
+
+/* =====================================================================
+   5. THE PLAYBACK LOOP
+   requestAnimationFrame calls us before every screen refresh (~60×/s).
+   We advance t by real elapsed time, then draw the scene for that t.
+   ===================================================================== */
+let t = reduceMotion ? 4.0 : 0;   // reduced motion: open on the finished composition
+let playing = !reduceMotion;
+let last = null;
+
+function updateUI() {
+  $('readout').textContent = `t = ${t.toFixed(2)} s`;
+  $('scrub').value = Math.round(t * 1000);
+  $('playBtn').textContent = playing ? 'Pause' : 'Play';
+  $('replayOverlay').hidden = !(t >= DURATION);
+  lanesEl.style.setProperty('--f', t / DURATION);
+  for (const g of groups) g.bar.classList.toggle('on', t >= g.start && t <= g.end);
+}
+
+function frame(now) {
+  if (last !== null && playing) {
+    t += (now - last) / 1000;
+    if (t >= DURATION) { t = DURATION; playing = false; }
+  }
+  last = now;
+  render(t);
+  updateUI();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ---------- Controls ---------- */
+function replay() { t = 0; playing = true; }
+$('replayBtn').addEventListener('click', replay);
+$('replayOverlay').addEventListener('click', replay);
+$('playBtn').addEventListener('click', () => {
+  if (t >= DURATION) { replay(); return; }
+  playing = !playing;
+});
+$('scrub').addEventListener('input', e => {
+  playing = false;
+  t = e.target.value / 1000;
+});
+</script>
+
+</body></html>
