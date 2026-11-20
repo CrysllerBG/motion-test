@@ -147,3 +147,16 @@ dialog::backdrop { background: rgba(0,0,0,.55); }
 .warn-text { color: var(--warn); }
 a.btn { text-decoration: none; display: inline-block; }
 .btn.primary { border-color: var(--accent); }
+
+/* Sound */
+.sound-title { margin-top: 18px; }
+.tl-cue-name { display: flex; align-items: center; justify-content: space-between; cursor: default; }
+.tl-add { background: var(--panel-2); border: 1px solid var(--rule); border-radius: 3px; color: var(--muted); cursor: pointer; padding: 0 5px; line-height: 14px; font-size: 12px; }
+.tl-add:hover { color: var(--ink); border-color: var(--accent); }
+.tl-row.tl-cue-row { height: 18px; }
+.tl-cue { position: absolute; top: 1px; height: 16px; transform: translateX(-5px); padding: 0 5px 0 13px; font: 10px/16px var(--mono); color: #f5deb0; white-space: nowrap; cursor: grab; border-radius: 3px; }
+.tl-cue::before { content: ""; position: absolute; left: 1px; top: 4px; width: 8px; height: 8px; background: #d6b062; transform: rotate(45deg); }
+.tl-cue:hover { background: rgba(214, 176, 98, .15); }
+.tl-cue.on::before { background: #fff2c4; box-shadow: 0 0 6px #fff2c4; }
+.tl-cue.sel { outline: 2px solid var(--accent-2); }
+.btn.sound[aria-pressed="true"] { border-color: #d6b062; color: #f5deb0; }

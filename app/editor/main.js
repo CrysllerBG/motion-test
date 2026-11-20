@@ -7,6 +7,8 @@ import { renderInspector } from './inspector.js';
 import { renderLayers } from './layers-ui.js';
 import { createOverlay } from './overlay.js';
 import { openExportDialog } from './export-ui.js';
+import { LiveAudio } from '../engine/audio/live.js';
+import { hasSound } from '../engine/audio/graph.js';
 
 const $ = id => document.getElementById(id);
 let selected = null;           // { layerId, anim? }
@@ -15,6 +17,7 @@ let fontsKey = '';
 let infoTimer = null;
 
 const store = createStore({ onChange });
+const audio = new LiveAudio();
 const player = new Player($('stage'), { container: $('stageBox'), onTick });
 const overlay = createOverlay($('overlay'), { store, player, getSelected: () => selected, onInfo: info });
 player.onResize = () => overlay.draw();
@@ -26,6 +29,7 @@ function onTick(t) {
   $('playBtn').textContent = player.playing ? 'Pause' : 'Play';
   timeline?.update(t);
   overlay.draw();
+  audio.update(comp, t, player.playing);   // sound follows the same t as the picture
 }
 
 // Called after every change to the spec. `source` says who made it, so the panel that
@@ -35,6 +39,7 @@ function onChange({ source, structure }) {
   if (!s.comp) return;
   player.setComp(s.comp);
   if (selected?.layerId && !findLayer(s.spec, selected.layerId)) selected = null;
+  if (selected?.cue !== undefined && !s.spec.cues?.[selected.cue]) selected = null;
 
   const box = $('errors');
   box.hidden = !s.errors.length;
@@ -61,12 +66,21 @@ function rebuildTimeline() {
         { key: `${layerId}.anim${k}.time`, source: 'timeline', structure: final });
       if (final) { store.endGesture(); info(null, true); }
     },
-    onInfo: info
+    onInfo: info,
+    onCueMove: (i, at, final) => {
+      store.edit(spec => { spec.cues[i].at = at; }, { key: `cue${i}.at`, source: 'timeline', structure: final });
+      if (final) { store.endGesture(); info(null, true); }
+    },
+    onAddCue: () => {
+      const at = +player.t.toFixed(2);
+      store.edit(spec => { (spec.cues ||= []).push({ at, sound: 'boom' }); }, { structure: true });
+      select({ cue: store.state.spec.cues.length - 1 });
+    }
   });
   timeline.update(player.t);
 }
 function rebuildInspector() {
-  renderInspector($('inspector'), { store, selected, select, player });
+  renderInspector($('inspector'), { store, selected, select, player, audio });
 }
 
 function select(sel, { quiet = false } = {}) {
@@ -175,6 +189,16 @@ $('prevFrame').onclick = () => frameStep(-1);
 $('nextFrame').onclick = () => frameStep(1);
 $('scrub').oninput = e => { player.pause(); player.seek(e.target.value / 1000 * store.state.comp.duration); };
 $('loop').onchange = e => { player.loop = e.target.checked; };
+$('soundBtn').onclick = async () => {
+  const btn = $('soundBtn');
+  if (!audio.available) { info('Sound unavailable: Tone.js did not load'); return; }
+  if (audio.on) audio.disable(); else await audio.enable(store.state.comp);
+  player.setClock(audio.on ? () => audio.clock() : null);   // sound on: the audio clock drives time
+  btn.textContent = audio.on ? 'Sound on' : 'Sound off';
+  btn.setAttribute('aria-pressed', String(audio.on));
+  if (audio.on && !hasSound(store.state.comp)) info('This composition has no sound yet: add a sound bed (Layers panel) or a cue (+ in the Cues lane)', true);
+  if (selected?.cue !== undefined) rebuildInspector();   // enables the Preview button
+};
 
 addEventListener('keydown', e => {
   const mod = e.ctrlKey || e.metaKey;
@@ -190,5 +214,5 @@ addEventListener('keydown', e => {
 });
 addEventListener('beforeunload', e => { if (store.dirty) { e.preventDefault(); e.returnValue = ''; } });
 
-window.studio = { player, store, load, select, get selected() { return selected; } };   // handy from the console (and for tests)
+window.studio = { player, store, audio, load, select, get selected() { return selected; } };   // handy from the console (and for tests)
 init();

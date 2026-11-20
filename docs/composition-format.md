@@ -95,6 +95,40 @@ letter/word, offset by the stagger.
 it starts (0..1; 0.25 turns a sine into a cosine). Several waves with short, unrelated periods
 on the same prop make a convincing flicker (see the torches in `dungeon-roller-title.json`).
 
+## Sound
+
+Sound follows the same timeline as the picture. There are two kinds, matching the two kinds of
+motion:
+
+- **Sound beds** (`"sounds"`): continuous sounds such as a drone, wind, fire or crackle. They are
+  written like layers (`id`, `type`, `label`, `props`, `animate`, `hidden` = muted), and their
+  props animate with the same tracks, so a fade-in is `{ "prop": "volume", "from": 0, "to": 0.5, … }`.
+- **Cues** (`"cues"`): one-shot sounds at a moment, e.g. a boom when something lands. They fire
+  when the playhead crosses them while playing forward; scrubbing stays silent.
+
+```json
+"audio":  { "volume": 0.85, "reverb": 0.35, "decay": 5 },
+"sounds": [
+  { "id": "drone", "type": "drone", "label": "Drone", "props": { "note": "D1", "volume": 0.5 },
+    "animate": [{ "prop": "volume", "from": 0, "to": 0.5, "start": 0, "duration": 2 }] },
+  { "id": "fire", "type": "hiss", "label": "Fire", "props": { "noise": "brown", "filter": "bandpass", "cutoff": 700, "volume": 0.3 } }
+],
+"cues": [
+  { "at": 9.8, "sound": "boom", "note": "C1", "label": "Die lands" },
+  { "at": 9.95, "sound": "chord", "note": "D3 F#3 A3 D4", "length": 2.2 }
+]
+```
+
+- `audio`: master `volume`, `reverb` (0 = dry … 1 = all echo), `decay` (seconds the echo lasts:
+  bigger = bigger room). Everything goes through the reverb.
+- A cue's `note` is a pitch like `"C1"` (low) … `"C6"` (high); several separated by spaces make a
+  chord. `length` is how long the note is held, `velocity` (0..1) how hard it's struck. Leave them
+  out to use the instrument's defaults (table below).
+- Every sound is synthesized (oscillators, filtered noise, envelopes): no audio files.
+- The `crackle` bed's pops are seeded, so they land at the same moments on every play and export.
+- Export renders the sound offline with every cue at its exact time, and puts it in the MP4 as
+  AAC (Opus in browsers without an AAC encoder).
+
 ## Recipes
 
 | effect | how |
@@ -257,6 +291,51 @@ Overrides: `opacity` = `0.08`, `blend` = `"overlay"`.
 ### Easings
 
 `linear` · `inQuad` · `outCubic` · `inOutQuad` · `outBounce` · `inCubic` · `inOutCubic` · `outExpo` · `outBack` · `step`
+
+### Sound beds (in `"sounds"`)
+
+#### `drone`: Drone
+
+| prop | type | default | notes |
+|---|---|---|---|
+| `volume` | number 0 … 1 | `0.5` | loudness, 0..1 |
+| `note` | note | `"D1"` | root note, e.g. D1, A#2 |
+| `interval` | number 0 … 24 | `7` | second voice, semitones above (7 = a fifth, 0 = none) |
+| `cutoff` | number 40 … 4000 | `240` | low-pass filter, Hz: lower = darker |
+| `spread` | number 0 … 80 | `25` | detune between the stacked oscillators, cents |
+| `wave` | `sawtooth` · `square` · `triangle` · `sine` | `"sawtooth"` |  |
+
+#### `hiss`: Noise bed
+
+| prop | type | default | notes |
+|---|---|---|---|
+| `volume` | number 0 … 1 | `0.5` | loudness, 0..1 |
+| `noise` | `white` · `pink` · `brown` | `"pink"` | brown = rumble, pink = wind/air, white = hiss |
+| `filter` | `lowpass` · `bandpass` · `highpass` | `"bandpass"` |  |
+| `cutoff` | number 40 … 12000 | `700` | filter frequency, Hz |
+| `q` | number 0.1 … 20 | `1` | filter sharpness: higher = more whistly |
+
+#### `crackle`: Crackle
+
+| prop | type | default | notes |
+|---|---|---|---|
+| `volume` | number 0 … 1 | `0.5` | loudness, 0..1 |
+| `rate` | number 0 … 40 | `8` | pops per second (on average) |
+| `cutoff` | number 200 … 12000 | `2200` | high-pass, Hz: higher = thinner, drier pops |
+| `seed` | number 0 … 9999 | `1` |  |
+
+### Cue sounds (in `"cues"`)
+
+| sound | what | default note | default length (s) |
+|---|---|---|---|
+| `boom` | Boom (impact) | `C1` | 1.2 |
+| `clank` | Clank (metal) | `C2` | 0.2 |
+| `whoomp` | Whoomp (fire catching) | no pitch | 0.6 |
+| `paper` | Paper (swish) | no pitch | 0.5 |
+| `crash` | Crash (rubble) | no pitch | 0.7 |
+| `chord` | Chord (pad) | `D3 F#3 A3 D4` | 2.2 |
+| `bell` | Bell (deep) | `D2` | 3 |
+| `chime` | Chime (bright) | `A5` | 1.5 |
 <!-- generated:end -->
 
 ## Checking a composition
@@ -273,7 +352,6 @@ Errors point at the exact spot, e.g. `layers[3].animate[1].ease: unknown easing 
 
 - Masks / clipping: a texture can't be confined to the inside of a shape yet.
 - Images, SVG files and video as layers.
-- Sound (Tone.js, rendered into the MP4).
 - 3D (Three.js) layers.
 - A "shake" that only happens during a time window (waves run for the whole piece).
 - A dedicated flame element (the reference trailer's torches are hand-drawn bezier flames).

@@ -12,18 +12,24 @@ import { ease } from './ease.js';
 import { ELEMENTS, COMMON_PROPS } from './elements/index.js';
 import { countUnits } from './elements/text.js';
 import { isColor, lerpColor } from './color.js';
+import { BEDS, CUES, NOTE_RE, cueWithDefaults } from './audio/sounds.js';
 
 const clamp01 = x => Math.min(Math.max(x, 0), 1);
-const TOP_KEYS = ['name', 'duration', 'fps', 'width', 'height', 'seed', 'background', 'fonts', 'layers', 'notes'];
+const TOP_KEYS = ['name', 'duration', 'fps', 'width', 'height', 'seed', 'background', 'fonts', 'layers', 'notes', 'audio', 'sounds', 'cues'];
+const AUDIO_KEYS = { volume: [0, 2], reverb: [0, 1], decay: [0.1, 20] };
+const CUE_KEYS = ['at', 'sound', 'label', 'note', 'length', 'velocity'];
 const LAYER_KEYS = ['id', 'type', 'label', 'props', 'animate', 'children', 'text', 'split', 'stagger', 'staggerFrom', 'hidden', 'notes'];
 const ANIM_KEYS = ['prop', 'from', 'to', 'start', 'duration', 'ease', 'stagger', 'wave', 'label'];
 
+// Visual layers get the common props (opacity, offset…); sound beds only have their own.
 export function propSchema(type) {
+  if (BEDS[type]) return BEDS[type].props;
   const el = ELEMENTS[type];
   return el ? { ...COMMON_PROPS, ...el.props } : COMMON_PROPS;
 }
+export const isSoundType = type => !!BEDS[type];
 export function layerDefaults(L) {
-  const el = ELEMENTS[L.type];
+  const el = ELEMENTS[L.type] || BEDS[L.type];
   const out = {};
   for (const [k, s] of Object.entries(propSchema(L.type))) if (s.default !== undefined) out[k] = s.default;
   const extra = typeof el?.defaults === 'function' ? el.defaults(L.props || {}) : el?.defaults;
@@ -42,14 +48,14 @@ export function compile(spec) {
   const tracks = [], nodes = [], ids = new Set();
   const scene = {};
 
-  function walk(list, path, parent) {
+  function walk(list, path, parent, registry = ELEMENTS) {
     if (!Array.isArray(list)) { err(path, 'must be an array of layers'); return []; }
     const out = [];
     list.forEach((L, i) => {
       const p = `${path}[${i}]`;
       if (!L || typeof L !== 'object') return err(p, 'layer must be an object');
-      const el = ELEMENTS[L.type];
-      if (!el) return err(`${p}.type`, `unknown type "${L.type}" (known: ${Object.keys(ELEMENTS).join(', ')})`);
+      const el = registry[L.type];
+      if (!el) return err(`${p}.type`, `unknown type "${L.type}" (known here: ${Object.keys(registry).join(', ')})`);
       if (typeof L.id !== 'string' || !L.id) err(`${p}.id`, 'every layer needs a unique string id');
       else if (ids.has(L.id)) err(`${p}.id`, `duplicate id "${L.id}"`);
       ids.add(L.id);
@@ -64,7 +70,7 @@ export function compile(spec) {
       }
 
       const units = L.type === 'text' ? Math.max(1, countUnits(L)) : 1;
-      const node = { src: L, path: p, type: L.type, el, parent, units, base: { ...layerDefaults(L), ...(L.props || {}) }, anims: {}, waves: [], children: [] };
+      const node = { src: L, path: p, type: L.type, el, parent, units, sound: registry === BEDS, base: { ...layerDefaults(L), ...(L.props || {}) }, anims: {}, waves: [], children: [] };
 
       (L.animate || []).forEach((a, k) => {
         const ap = `${p}.animate[${k}]`;
@@ -91,7 +97,7 @@ export function compile(spec) {
         for (let u = 0; u < units; u++) {
           const order = staggerOrder(u, units, L.staggerFrom);
           const key = `${L.id}/${k}/${u}`;
-          tracks.push({ group: L.label || L.id, layerId: L.id, anim: k, unit: u, key, prop: a.prop, label: a.label,
+          tracks.push({ group: (registry === BEDS ? '♪ ' : '') + (L.label || L.id), layerId: L.id, anim: k, unit: u, key, prop: a.prop, label: a.label,
                         start: num(a.start, 0) + order * stagger, duration: num(a.duration, 0), easing: a.ease || 'linear' });
           scene[key] = 0;
           keys.push(tracks[tracks.length - 1]);
@@ -107,6 +113,31 @@ export function compile(spec) {
     return out;
   }
   const roots = walk(spec.layers || [], 'layers', null);
+  // Sound beds use the same machinery: their animations become tracks like any layer's.
+  const soundNodes = walk(spec.sounds || [], 'sounds', null, BEDS);
+
+  if (spec.audio !== undefined) {
+    if (!spec.audio || typeof spec.audio !== 'object') err('audio', 'must be an object like { "volume": 0.85, "reverb": 0.35, "decay": 5 }');
+    else for (const [k, v] of Object.entries(spec.audio)) {
+      if (!AUDIO_KEYS[k]) err(`audio.${k}`, `unknown key (allowed: ${Object.keys(AUDIO_KEYS).join(', ')})`);
+      else if (typeof v !== 'number' || v < AUDIO_KEYS[k][0] || v > AUDIO_KEYS[k][1]) err(`audio.${k}`, `must be a number from ${AUDIO_KEYS[k][0]} to ${AUDIO_KEYS[k][1]}`);
+    }
+  }
+  // Cues: one-shot sounds at a moment in time
+  const cues = [];
+  if (spec.cues !== undefined && !Array.isArray(spec.cues)) err('cues', 'must be an array');
+  (Array.isArray(spec.cues) ? spec.cues : []).forEach((c, i) => {
+    const p = `cues[${i}]`;
+    if (!c || typeof c !== 'object') return err(p, 'must be an object');
+    for (const k of Object.keys(c)) if (!CUE_KEYS.includes(k)) err(`${p}.${k}`, `unknown cue key (allowed: ${CUE_KEYS.join(', ')})`);
+    if (!CUES[c.sound]) return err(`${p}.sound`, `unknown sound "${c.sound}" (known: ${Object.keys(CUES).join(', ')})`);
+    if (typeof c.at !== 'number' || c.at < 0) err(`${p}.at`, 'needs a time in seconds (≥ 0)');
+    if (c.note !== undefined && !(typeof c.note === 'string' && c.note.trim().split(/\s+/).every(n => NOTE_RE.test(n)))) err(`${p}.note`, 'must be a note like "C2", or several separated by spaces: "D3 F#3 A3"');
+    if (c.length !== undefined && !(typeof c.length === 'number' && c.length > 0)) err(`${p}.length`, 'must be a positive number of seconds');
+    if (c.velocity !== undefined && !(typeof c.velocity === 'number' && c.velocity >= 0 && c.velocity <= 1)) err(`${p}.velocity`, 'must be a number from 0 to 1');
+    cues.push({ ...cueWithDefaults(c), i });
+  });
+  cues.sort((a, b) => a.at - b.at);
 
   // evaluate(t): every track recomputes its own progress from t. Before start = 0, after end = 1.
   function evaluate(t) {
@@ -143,7 +174,8 @@ export function compile(spec) {
   }
 
   return {
-    spec, errors, tracks, scene, roots, nodes, evaluate, resolve,
+    spec, errors, tracks, scene, roots, nodes, soundNodes, cues, evaluate, resolve,
+    audio: { volume: 0.85, reverb: 0.35, decay: 5, ...(spec.audio && typeof spec.audio === 'object' ? spec.audio : {}) },
     duration, fps, seed: num(spec.seed, 1) | 0,
     width: num(spec.width, 1920), height: num(spec.height, 1080),
     byId: id => nodes.find(n => n.src.id === id)
@@ -163,6 +195,7 @@ function checkValue(s, v, path, err) {
   else if (s.type === 'color' && !isColor(v)) err(path, `must be a colour like "#ffcc00", "#ffcc0080" or "rgba(255,204,0,.5)"`);
   else if (s.type === 'select' && !s.options.includes(v)) err(path, `must be one of: ${s.options.join(', ')}`);
   else if (s.type === 'bool' && typeof v !== 'boolean') err(path, 'must be true or false');
+  else if (s.type === 'note' && !(typeof v === 'string' && NOTE_RE.test(v))) err(path, 'must be a note like "D1" or "A#2"');
   else if (s.type === 'fill' && !(isColor(v) || (v && typeof v === 'object' && ['linear', 'radial'].includes(v.type) && Array.isArray(v.stops))))
     err(path, 'must be a colour or { "type": "linear"|"radial", "stops": [["#color", 0], ...] }');
 }

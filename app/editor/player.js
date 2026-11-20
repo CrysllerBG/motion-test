@@ -46,21 +46,28 @@ export class Player {
   toggle() { this.playing ? this.pause() : this.play(); }
   replay() { this.t = 0; this.playing = true; }
   invalidate() { this.dirty = true; }
+  setClock(fn) { this.clock = fn; this.last = null; }   // switch clocks without a jump
+  // Time advances by real elapsed time. Normally that's the screen's clock (requestAnimationFrame);
+  // when sound is on, `clock` is the audio hardware's clock instead. Two clocks always drift a
+  // little, so we pick one master and let both picture and sound follow it.
   frame(now) {
+    const clockNow = this.clock ? this.clock() * 1000 : now;
     if (this.comp && this.playing && this.last !== null) {
-      this.t += Math.min(0.1, (now - this.last) / 1000);   // advance by real elapsed time (capped after a stall)
+      this.t += Math.min(0.1, Math.max(0, clockNow - this.last) / 1000);   // capped after a stall
       if (this.t >= this.comp.duration) {
         if (this.loop) this.t = this.t % this.comp.duration;
         else { this.t = this.comp.duration; this.playing = false; }
       }
       this.dirty = true;
     }
-    this.last = now;
+    this.last = clockNow;
+    requestAnimationFrame(n => this.frame(n));   // ask for the next frame first, so an error below can't stop playback
     if (this.comp && this.dirty) {
       this.dirty = false;
-      paintFrame(this.ctx, this.comp, this.t, this.canvas.width, this.canvas.height, { hidden: this.hidden });
-      this.onTick(this.t);
+      try {
+        paintFrame(this.ctx, this.comp, this.t, this.canvas.width, this.canvas.height, { hidden: this.hidden });
+        this.onTick(this.t);
+      } catch (e) { console.error(e); }
     }
-    requestAnimationFrame(n => this.frame(n));
   }
 }

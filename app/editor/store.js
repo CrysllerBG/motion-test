@@ -67,19 +67,26 @@ export function createStore({ onChange }) {
   };
 }
 
-// Helpers to find things inside the spec by layer id
-export function findLayer(spec, id, list = spec.layers, parent = null) {
+// Helpers to find things inside the spec by id. Sound beds live in spec.sounds but are
+// found the same way, so the inspector and timeline treat them like any other layer.
+function search(list, id, parent = null) {
   for (let i = 0; i < (list || []).length; i++) {
     const L = list[i];
     if (L.id === id) return { layer: L, list, index: i, parent };
-    if (L.children) { const r = findLayer(spec, id, L.children, L); if (r) return r; }
+    if (L.children) { const r = search(L.children, id, L); if (r) return r; }
   }
   return null;
+}
+export function findLayer(spec, id) {
+  const r = search(spec.layers, id);
+  if (r) return r;
+  const snd = search(spec.sounds, id);
+  return snd && { ...snd, sound: true };
 }
 export function allIds(spec) {
   const ids = new Set();
   const walk = list => (list || []).forEach(L => { ids.add(L.id); walk(L.children); });
-  walk(spec.layers);
+  walk(spec.layers); walk(spec.sounds);
   return ids;
 }
 export function uniqueId(spec, base) {

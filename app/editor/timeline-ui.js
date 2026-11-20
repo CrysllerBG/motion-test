@@ -2,7 +2,7 @@
 // what actually plays). One lane per layer, one row per animation. Waves show as a dashed line
 // across the whole piece, since they never stop.
 
-export function buildTimeline(root, comp, { onScrub, onSelect, selected, onRetime, onInfo } = {}) {
+export function buildTimeline(root, comp, { onScrub, onSelect, selected, onRetime, onInfo, onCueMove, onAddCue } = {}) {
   root.innerHTML = '';
   const D = comp.duration;
   const pct = s => (s / D * 100) + '%';
@@ -29,7 +29,7 @@ export function buildTimeline(root, comp, { onScrub, onSelect, selected, onRetim
     const lane = el('div', 'tl-lane' + (selected?.layerId === L.id ? ' sel' : ''));
     const name = el('button', 'tl-name');
     name.style.paddingLeft = (8 + depthOf(node) * 12) + 'px';
-    name.textContent = L.label || L.id;
+    name.textContent = (node.sound ? '♪ ' : '') + (L.label || L.id);
     name.title = `${L.id} · ${L.type}`;
     name.onclick = () => onSelect?.({ layerId: L.id });
     lane.append(name);
@@ -68,6 +68,60 @@ export function buildTimeline(root, comp, { onScrub, onSelect, selected, onRetim
     rows.push(lane);
   }
 
+  // ---- Cues lane: one-shot sounds as markers. Drag to retime, click to select. ----
+  const cueLane = el('div', 'tl-lane tl-cues' + (selected?.cue !== undefined ? ' sel' : ''));
+  const cueName = el('div', 'tl-name tl-cue-name');
+  cueName.append(Object.assign(el('span'), { textContent: '♪ Cues' }));
+  const addCue = el('button', 'tl-add'); addCue.textContent = '+'; addCue.title = 'Add a sound cue at the playhead';
+  addCue.onclick = e => { e.stopPropagation(); onAddCue?.(); };
+  cueName.append(addCue);
+  cueLane.append(cueName);
+  const cueRow = el('div', 'tl-rows'); cueLane.append(cueRow);
+  const cueEls = [];
+  // Markers that would overlap go on the next row down (like stacked clips in a video editor).
+  const trackPx = Math.max(200, (root.clientWidth || 1000) - 160);
+  const rowEnds = [];
+  const cueTrackFor = c => {
+    const txt = c.label || c.sound, start = c.at / D * trackPx, end = start + txt.length * 6.2 + 24;
+    let r = rowEnds.findIndex(e => e <= start);
+    if (r < 0) { r = rowEnds.length; const tr = el('div', 'tl-row tl-cue-row'); cueRow.append(tr); }
+    rowEnds[r] = end;
+    return cueRow.children[r];
+  };
+  if (!comp.cues.length) cueRow.append(el('div', 'tl-row tl-cue-row'));
+  for (const c of comp.cues) {
+    const cueTrack = cueTrackFor(c);
+    const m = el('div', 'tl-cue' + (selected?.cue === c.i ? ' sel' : ''));
+    m.style.left = pct(c.at);
+    m.textContent = c.label || c.sound;
+    m.title = `${c.label ? c.label + ' · ' : ''}${c.sound} at ${c.at.toFixed(2)} s · drag to retime`;
+    m.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault(); e.stopPropagation();
+      const r = cueTrack.getBoundingClientRect(), x0 = e.clientX; let moved = false, last = c.at;
+      m.setPointerCapture(e.pointerId);
+      onSelect?.({ cue: c.i }, { quiet: true });
+      const move = ev => {
+        if (!moved && Math.abs(ev.clientX - x0) < 3) return;
+        moved = true;
+        let at = c.at + (ev.clientX - x0) / r.width * D;
+        at = Math.max(0, Math.min(D, ev.altKey ? +at.toFixed(3) : Math.round(at / 0.05) * 0.05));
+        at = +at.toFixed(3);
+        if (at === last) return;
+        last = at; m.style.left = pct(at);
+        onCueMove?.(c.i, at, false);
+        onInfo?.(`${c.label || c.sound}: ${at.toFixed(2)} s` + (ev.altKey ? '' : '  (hold Alt to move freely)'));
+      };
+      const up = () => {
+        m.removeEventListener('pointermove', move); m.removeEventListener('pointerup', up);
+        if (moved) onCueMove?.(c.i, last, true); else onSelect?.({ cue: c.i });
+      };
+      m.addEventListener('pointermove', move); m.addEventListener('pointerup', up);
+    });
+    cueTrack.append(m); cueEls.push([c, m]);
+  }
+  body.append(cueLane);
+
   // Time ruler with a tick every second (or every 2/5 s on long pieces)
   const ruler = el('div', 'tl-ruler');
   ruler.append(el('span', 'tl-name-spacer'));
@@ -87,7 +141,7 @@ export function buildTimeline(root, comp, { onScrub, onSelect, selected, onRetim
   };
   const scrubArea = [body, ruler];
   for (const area of scrubArea) area.addEventListener('pointerdown', e => {
-    if (e.target.closest('.tl-name, .tl-bar, .tl-wave')) return;
+    if (e.target.closest('.tl-name, .tl-bar, .tl-wave, .tl-cue')) return;
     onScrub?.(timeAt(e));
     const move = ev => onScrub?.(timeAt(ev));
     const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); };
@@ -143,6 +197,7 @@ export function buildTimeline(root, comp, { onScrub, onSelect, selected, onRetim
     update(t) {
       root.style.setProperty('--f', t / D);
       for (const b of bars.values()) b.el?.classList.toggle('on', t >= b.start && t <= b.end);
+      for (const [c, m] of cueEls) m.classList.toggle('on', t >= c.at && t <= c.at + 0.25);
     }
   };
 }

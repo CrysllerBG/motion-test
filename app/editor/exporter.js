@@ -7,6 +7,19 @@ import { compile } from '../engine/timeline.js';
 import { paintFrame } from '../engine/render.js';
 import { loadFonts } from '../engine/fonts.js';
 import { Muxer, ArrayBufferTarget } from '../vendor/mp4-muxer-5.2.2.mjs';
+import { renderAudio } from '../engine/audio/offline.js';
+import { hasSound } from '../engine/audio/graph.js';
+
+const SAMPLE_RATE = 48000;
+// AAC plays everywhere (QuickTime included); Opus is the fallback where the browser has no AAC encoder.
+async function pickAudioCodec() {
+  if (typeof window.AudioEncoder !== 'function') return null;
+  for (const [codec, mux] of [['mp4a.40.2', 'aac'], ['opus', 'opus']]) {
+    const config = { codec, sampleRate: SAMPLE_RATE, numberOfChannels: 2, bitrate: 192000 };
+    try { if ((await AudioEncoder.isConfigSupported(config)).supported) return { config, mux }; } catch {}
+  }
+  return null;
+}
 
 export const QUALITY = { standard: 0.08, high: 0.15, max: 0.3 };   // bits per pixel per frame
 
@@ -29,7 +42,7 @@ async function pickCodec(width, height, fps, bitrate) {
   throw new Error('This browser cannot encode video. Use a recent Chrome, Edge or Safari.');
 }
 
-export async function exportVideo(spec, { width, fps, quality = 'high', onProgress = () => {}, signal } = {}) {
+export async function exportVideo(spec, { width, fps, quality = 'high', audio = true, onProgress = () => {}, signal } = {}) {
   if (!exportSupported()) throw new Error('This browser has no WebCodecs video encoder. Use a recent Chrome, Edge or Safari.');
   const comp = compile(spec);
   if (comp.errors.length) throw new Error('Fix the composition first:\n' + comp.errors.join('\n'));
@@ -42,9 +55,19 @@ export async function exportVideo(spec, { width, fps, quality = 'high', onProgre
   await loadFonts(spec.fonts);
   const { config, muxCodec } = await pickCodec(width, height, fps, bitrate);
 
+  // Sound first: render it offline (much faster than real time), then it's ready to encode.
+  let audioBuffer = null, audioCodec = null, audioNote = null;
+  if (audio && hasSound(comp)) {
+    audioCodec = await pickAudioCodec();
+    if (!audioCodec) audioNote = 'this browser cannot encode audio, so the video is silent';
+    else if (!window.Tone) { audioCodec = null; audioNote = 'Tone.js did not load, so the video is silent'; }
+    else { onProgress({ stage: 'sound', frame: 0, frames, elapsed: 0, eta: 0 }); audioBuffer = await renderAudio(comp, { sampleRate: SAMPLE_RATE }); }
+  }
+
   const muxer = new Muxer({
     target: new ArrayBufferTarget(),
     video: { codec: muxCodec, width, height, frameRate: fps },
+    ...(audioBuffer ? { audio: { codec: audioCodec.mux, numberOfChannels: 2, sampleRate: SAMPLE_RATE } } : {}),
     fastStart: 'in-memory',              // put the index at the front so the file starts playing immediately
     firstTimestampBehavior: 'offset'
   });
@@ -79,10 +102,32 @@ export async function exportVideo(spec, { width, fps, quality = 'high', onProgre
     }
     await encoder.flush();
     if (failure) throw failure;
+    if (audioBuffer) await encodeAudio(audioBuffer, audioCodec.config, muxer);
     muxer.finalize();
   } finally {
     if (encoder.state !== 'closed') encoder.close();
   }
   const blob = new Blob([muxer.target.buffer], { type: 'video/mp4' });
-  return { blob, width, height, fps, frames, codec: config.codec, seconds: (performance.now() - started) / 1000 };
+  return { blob, width, height, fps, frames, codec: config.codec, audio: audioBuffer ? audioCodec.config.codec : null, audioNote, seconds: (performance.now() - started) / 1000 };
+}
+
+// Hand the rendered sound to the audio encoder in 0.1 s slices ("planar" = all of the left
+// channel, then all of the right), each stamped with its time so it lines up with the frames.
+async function encodeAudio(buffer, config, muxer) {
+  let failure = null;
+  const enc = new AudioEncoder({ output: (chunk, meta) => muxer.addAudioChunk(chunk, meta), error: e => { failure = e; } });
+  enc.configure(config);
+  const L = buffer.getChannelData(0), R = buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : L;
+  const sr = buffer.sampleRate, slice = Math.round(sr / 10);
+  for (let off = 0; off < L.length; off += slice) {
+    const n = Math.min(slice, L.length - off);
+    const data = new Float32Array(n * 2);
+    data.set(L.subarray(off, off + n), 0); data.set(R.subarray(off, off + n), n);
+    const ad = new AudioData({ format: 'f32-planar', sampleRate: sr, numberOfFrames: n, numberOfChannels: 2, timestamp: Math.round(off / sr * 1e6), data });
+    enc.encode(ad); ad.close();
+    if (failure) throw failure;
+  }
+  await enc.flush();
+  enc.close();
+  if (failure) throw failure;
 }

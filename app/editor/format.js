@@ -2,7 +2,8 @@
 // hand-written one and a git diff shows only what actually changed.
 import { propSchema } from '../engine/timeline.js';
 
-const TOP = ['name', 'notes', 'duration', 'fps', 'width', 'height', 'seed', 'background', 'fonts', 'layers'];
+const TOP = ['name', 'notes', 'duration', 'fps', 'width', 'height', 'seed', 'background', 'fonts', 'audio', 'layers', 'sounds', 'cues'];
+const CUE = ['at', 'sound', 'label', 'note', 'length', 'velocity'];
 const LAYER = ['id', 'type', 'label', 'notes', 'hidden', 'text', 'split', 'stagger', 'staggerFrom', 'props', 'animate', 'children'];
 const ANIM = ['prop', 'label', 'from', 'to', 'start', 'duration', 'ease', 'stagger', 'wave'];
 
@@ -26,6 +27,8 @@ export function normalize(spec) {
   };
   const s = ordered(spec, TOP);
   if (s.layers) s.layers = s.layers.map(layer);
+  if (s.sounds) { s.sounds = s.sounds.map(layer); if (!s.sounds.length) delete s.sounds; }
+  if (s.cues) { s.cues = s.cues.map(c => ordered(c, CUE)).sort((a, b) => a.at - b.at); if (!s.cues.length) delete s.cues; }
   return s;
 }
 

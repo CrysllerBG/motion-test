@@ -3,6 +3,7 @@
 import { propSchema, layerDefaults } from '../engine/timeline.js';
 import { COMMON_PROPS } from '../engine/elements/index.js';
 import { ELEMENTS } from '../engine/elements/index.js';
+import { BEDS, CUES, cueWithDefaults } from '../engine/audio/sounds.js';
 import { ease, EASE_NAMES } from '../engine/ease.js';
 import { parseFonts } from '../engine/fonts.js';
 import { findLayer } from './store.js';
@@ -13,6 +14,7 @@ export function renderInspector(root, ctx) {
   root.innerHTML = '';
   const spec = store.state.spec;
   if (!spec) return;
+  if (selected?.cue !== undefined && spec.cues?.[selected.cue]) return renderCue(root, ctx);
   const found = selected?.layerId && findLayer(spec, selected.layerId);
   if (!found) return renderComposition(root, store, player);
 
@@ -50,8 +52,9 @@ export function renderInspector(root, ctx) {
   root.append(head);
 
   // ---- Properties ----
-  const own = Object.keys(ELEMENTS[L.type].props);
-  const common = Object.keys(COMMON_PROPS).filter(k => !own.includes(k));
+  const isSound = !!found.sound;
+  const own = Object.keys((ELEMENTS[L.type] || BEDS[L.type]).props);
+  const common = isSound ? [] : Object.keys(COMMON_PROPS).filter(k => !own.includes(k));
   const animated = new Set((L.animate || []).map(a => a.prop));
   const propRow = k => {
     const s = schema[k];
@@ -69,6 +72,7 @@ export function renderInspector(root, ctx) {
     else if (s.type === 'bool') ctl = boolControl(val, setProp);
     else if (s.type === 'font') ctl = fontControl(val, setProp);
     else if (s.type === 'fill') ctl = fillControl(val, setProp);
+    else if (s.type === 'note') ctl = textControl(val, (v, final) => { if (final) setProp(v.trim(), true); }, { placeholder: 'e.g. D1' });
     const label = scrubLabel(k, s, () => findLayer(store.state.spec, id)?.layer.props?.[k] ?? defaults[k] ?? 0, (v, final) => { setProp(v, final); ctl.sync?.(v); }, s.help);
     const r = row(label, ctl, s.help);
     if (!isSet) r.classList.add('is-default');
@@ -78,10 +82,13 @@ export function renderInspector(root, ctx) {
   };
   const props = h('section', { class: 'insp-sec' }, h('h3', {}, 'Properties'));
   own.forEach(k => props.append(propRow(k)));
-  const look = h('details', { class: 'insp-more', open: common.some(k => (L.props && k in L.props) || animated.has(k)) || undefined },
-    h('summary', {}, 'Opacity, offset, scale, rotation, blur, blend'));
-  common.forEach(k => look.append(propRow(k)));
-  props.append(look);
+  if (common.length) {
+    const look = h('details', { class: 'insp-more', open: common.some(k => (L.props && k in L.props) || animated.has(k)) || undefined },
+      h('summary', {}, 'Opacity, offset, scale, rotation, blur, blend'));
+    common.forEach(k => look.append(propRow(k)));
+    props.append(look);
+  }
+  if (isSound) props.append(h('p', { class: 'hint' }, 'Turn Sound on (under the stage) to hear changes while playing. Animate volume or cutoff like any visual property.'));
   root.append(props);
 
   // ---- Animations ----
@@ -92,11 +99,11 @@ export function renderInspector(root, ctx) {
   animSec.append(h('div', { class: 'btn-row' },
     h('button', { class: 'small', onclick: () => {
       const t = +player.t.toFixed(2);
-      editLayer(l => { (l.animate ||= []).push({ prop: 'opacity', from: 0, to: 1, start: t, duration: 0.6, ease: 'outCubic' }); }, { structure: true });
+      editLayer(l => { (l.animate ||= []).push(isSound ? { prop: 'volume', from: 0, to: 0.5, start: t, duration: 1, ease: 'inOutQuad' } : { prop: 'opacity', from: 0, to: 1, start: t, duration: 0.6, ease: 'outCubic' }); }, { structure: true });
       select({ layerId: id, anim: (findLayer(store.state.spec, id).layer.animate.length - 1) });
     } }, '+ Animation at playhead'),
     h('button', { class: 'small', onclick: () => {
-      editLayer(l => { (l.animate ||= []).push({ prop: 'dy', wave: { amp: 1, period: 4 } }); }, { structure: true });
+      editLayer(l => { (l.animate ||= []).push(isSound ? { prop: 'volume', wave: { amp: 0.1, period: 3 } } : { prop: 'dy', wave: { amp: 1, period: 4 } }); }, { structure: true });
       select({ layerId: id, anim: findLayer(store.state.spec, id).layer.animate.length - 1 });
     } }, '+ Wave (ambient drift)')));
   root.append(animSec);
@@ -162,7 +169,34 @@ function renderComposition(root, store, player) {
     num('height', { step: 1 }, 'export height in pixels'),
     num('seed', { step: 1 }, 'changes every random pattern (particles, textures)'),
     row('background', colorControl(spec.background || '#000000', (v, final) => editSpec(s => { s.background = v; }, { key: 'spec.bg' }))),
+    row('sound volume', numberControl({ type: 'number', min: 0, max: 1.5, step: 0.01 }, spec.audio?.volume ?? 0.85, (v, final) => editSpec(s => { (s.audio ||= {}).volume = v ?? 0.85; }, { key: 'spec.audio.volume' })), 'master volume of all sound'),
+    row('reverb', numberControl({ type: 'number', min: 0, max: 1, step: 0.01 }, spec.audio?.reverb ?? 0.35, (v, final) => editSpec(s => { (s.audio ||= {}).reverb = v ?? 0.35; }, { key: 'spec.audio.reverb' })), 'how much room echo (0 = dry)'),
+    row('reverb decay', numberControl({ type: 'number', min: 0.2, max: 12, step: 0.1 }, spec.audio?.decay ?? 5, (v, final) => editSpec(s => { (s.audio ||= {}).decay = v ?? 5; }, { key: 'spec.audio.decay' })), 'seconds the echo lasts: bigger = bigger room'),
     row('fonts', textControl((spec.fonts || []).join(', '), (v, final) => { if (final) editSpec(s => { s.fonts = v.split(',').map(x => x.trim()).filter(Boolean); }, { structure: true }); }, { placeholder: 'Inter, Jost:300' }), 'Google Fonts, "Family" or "Family:weight"')
+  );
+  root.append(sec);
+}
+
+// A cue: a one-shot sound at a moment. Drag its marker in the timeline to retime it.
+function renderCue(root, { store, selected, select, player, audio }) {
+  const i = selected.cue;
+  const c = store.state.spec.cues[i];
+  const full = cueWithDefaults(c);
+  const editCue = (fn, opts = {}) => store.edit(s => fn(s.cues[i]), { source: 'inspector', ...opts });
+  const sec = h('section', { class: 'insp-sec' },
+    h('div', { class: 'insp-title' }, h('strong', {}, c.label || CUES[c.sound]?.label || c.sound), h('span', { class: 'badge' }, 'cue')),
+    row('sound', selectControl(Object.keys(CUES), c.sound, v => editCue(x => { x.sound = v; delete x.note; delete x.length; }, { structure: true })), 'which instrument plays'),
+    row('label', textControl(c.label, (v, final) => editCue(x => { if (v) x.label = v; else delete x.label; }, { key: `cue${i}.label`, structure: final }), { placeholder: 'e.g. Die lands' })),
+    row(scrubLabel('at', { type: 'number', step: 0.01 }, () => store.state.spec.cues[i].at, (v, final) => editCue(x => { x.at = Math.max(0, +v.toFixed(3)); }, { key: `cue${i}.at`, structure: final })),
+      numberControl({ step: 0.01 }, c.at, (v, final) => editCue(x => { x.at = Math.max(0, v ?? 0); }, { key: `cue${i}.at`, structure: final }), { slider: false }), 'seconds: when it plays'),
+    CUES[c.sound]?.note ? row('note', textControl(c.note ?? '', (v, final) => { if (final) editCue(x => { if (v.trim()) x.note = v.trim(); else delete x.note; }, { structure: true }); }, { placeholder: CUES[c.sound].note }), 'pitch, e.g. C1; several notes separated by spaces make a chord') : null,
+    row(scrubLabel('length', { type: 'number', step: 0.01 }, () => full.length, (v, final) => editCue(x => { x.length = Math.max(0.01, +v.toFixed(3)); }, { key: `cue${i}.length`, structure: final })),
+      numberControl({ step: 0.01 }, c.length, (v, final) => editCue(x => { if (v === undefined) delete x.length; else x.length = Math.max(0.01, v); }, { key: `cue${i}.length`, structure: final }), { slider: false, placeholder: String(CUES[c.sound]?.length ?? '') }), 'seconds the note is held'),
+    row('velocity', numberControl({ type: 'number', min: 0, max: 1, step: 0.01 }, full.velocity, (v, final) => editCue(x => { x.velocity = v ?? 1; }, { key: `cue${i}.velocity`, structure: final })), 'how hard it is struck, 0..1'),
+    h('div', { class: 'btn-row' },
+      h('button', { class: 'small', disabled: !audio?.on || undefined, title: audio?.on ? 'Play this cue now' : 'Turn Sound on first (under the stage)', onclick: () => audio.preview(store.state.comp, cueWithDefaults(store.state.spec.cues[i])) }, '▶ Preview'),
+      h('button', { class: 'small', onclick: () => editCue(x => { x.at = +player.t.toFixed(2); }, { structure: true }) }, 'Move to playhead'),
+      h('button', { class: 'small', onclick: () => { store.edit(s => { s.cues.splice(i, 1); if (!s.cues.length) delete s.cues; }, { source: 'inspector', structure: true }); select(null); } }, 'Delete cue'))
   );
   root.append(sec);
 }

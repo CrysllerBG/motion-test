@@ -6,6 +6,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { ELEMENTS, COMMON_PROPS } from '../app/engine/elements/index.js';
 import { EASE_NAMES } from '../app/engine/ease.js';
 import { PRESETS } from '../app/engine/elements/particles.js';
+import { BEDS, CUES } from '../app/engine/audio/sounds.js';
 
 const FILE = new URL('../docs/composition-format.md', import.meta.url);
 const fmt = v => v === undefined ? '' : typeof v === 'string' ? `\`"${v}"\`` : `\`${JSON.stringify(v)}\``;
@@ -23,6 +24,10 @@ for (const [type, el] of Object.entries(ELEMENTS)) {
     Object.entries(PRESETS).map(([n, p]) => `| \`${n}\` | ${Object.values(p).map(v => `\`${v}\``).join(' | ')} |`).join('\n') + '\n';
 }
 out += `\n### Easings\n\n${EASE_NAMES.map(e => `\`${e}\``).join(' · ')}\n`;
+out += `\n### Sound beds (in \`"sounds"\`)\n`;
+for (const [type, bed] of Object.entries(BEDS)) out += `\n#### \`${type}\`: ${bed.label}\n\n${table(bed.props)}\n`;
+out += `\n### Cue sounds (in \`"cues"\`)\n\n| sound | what | default note | default length (s) |\n|---|---|---|---|\n` +
+  Object.entries(CUES).map(([k, c]) => `| \`${k}\` | ${c.label} | ${c.note ? `\`${c.note}\`` : 'no pitch'} | ${c.length} |`).join('\n') + '\n';
 
 const doc = readFileSync(FILE, 'utf8');
 const a = '<!-- generated:start -->', b = '<!-- generated:end -->';

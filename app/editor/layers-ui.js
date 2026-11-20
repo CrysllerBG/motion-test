@@ -1,6 +1,7 @@
 // The layer list: the composition's layer tree, back to front reading downwards
 // (the first layer is painted first, so it sits at the back).
 import { ELEMENTS } from '../engine/elements/index.js';
+import { BEDS } from '../engine/audio/sounds.js';
 import { findLayer, uniqueId } from './store.js';
 import { h } from './controls.js';
 
@@ -31,7 +32,8 @@ export function renderLayers(root, { store, selected, select }) {
       const L = { id: newId, type, ...JSON.parse(JSON.stringify(STARTERS[type] || {})) };
       if (type === 'text') L.props.y = 50;
       const f = selId && findLayer(s, selId);
-      if (f && f.layer.type === 'group') (f.layer.children ||= []).push(L);         // into the selected group
+      if (f && f.sound) (s.layers ||= []).push(L);                                  // a sound is selected: add on top
+      else if (f && f.layer.type === 'group') (f.layer.children ||= []).push(L);    // into the selected group
       else if (f) f.list.splice(f.index + 1, 0, L);                                // just in front of the selection
       else (s.layers ||= []).push(L);
       if (type === 'text') { const fonts = new Set(s.fonts || []); if (![...fonts].some(x => x.split(':')[0] === 'Inter')) s.fonts = [...fonts, 'Inter']; }
@@ -70,4 +72,29 @@ export function renderLayers(root, { store, selected, select }) {
   });
   walk(spec.layers, 0);
   root.append(list);
+
+  // ---- Sound beds: continuous sounds whose volume / cutoff animate like any layer prop ----
+  const STARTER_SOUNDS = {
+    drone: { props: { note: 'D1', volume: 0.4 } },
+    hiss: { props: { noise: 'brown', filter: 'bandpass', cutoff: 700, volume: 0.3 } },
+    crackle: { props: { rate: 8, volume: 0.3 } }
+  };
+  root.append(h('h2', { class: 'panel-title sound-title' }, 'Sound'));
+  root.append(h('select', { class: 'add-layer', title: 'Add a continuous sound', onchange: e => {
+    const type = e.target.value; e.target.value = '';
+    if (!type) return;
+    const newId = uniqueId(spec, type);
+    store.edit(s => { (s.sounds ||= []).push({ id: newId, type, label: BEDS[type].label, ...JSON.parse(JSON.stringify(STARTER_SOUNDS[type])) }); }, { structure: true });
+    select({ layerId: newId });
+  } }, h('option', { value: '' }, '+ Add sound bed'), Object.entries(BEDS).map(([k, b]) => h('option', { value: k }, b.label))));
+  const slist = h('div', { class: 'layer-list', role: 'tree' });
+  for (const L of spec.sounds || []) {
+    slist.append(h('div', { class: 'layer-item' + (L.id === selId ? ' sel' : '') + (L.hidden ? ' off' : ''), role: 'treeitem', 'aria-selected': String(L.id === selId) },
+      h('button', { class: 'eye', title: L.hidden ? 'Unmute (also in export)' : 'Mute (also in export)', 'aria-label': L.hidden ? 'Unmute' : 'Mute',
+        onclick: e => { e.stopPropagation(); store.edit(s => { const x = findLayer(s, L.id).layer; if (x.hidden) delete x.hidden; else x.hidden = true; }, { structure: true }); } }, L.hidden ? '◌' : '♪'),
+      h('button', { class: 'layer-name', onclick: () => select(L.id === selId ? null : { layerId: L.id }) },
+        h('span', {}, L.label || L.id), h('span', { class: 'type' }, L.type + (L.animate?.length ? ` · ${L.animate.length}` : '')))));
+  }
+  if (!(spec.sounds || []).length) slist.append(h('p', { class: 'hint' }, 'No sound beds. One-shot sounds (cues) live in the timeline\'s Cues lane.'));
+  root.append(slist);
 }

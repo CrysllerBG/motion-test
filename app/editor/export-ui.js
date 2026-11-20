@@ -1,6 +1,7 @@
 // The "Export video" dialog: choose size, frame rate and quality, watch progress, download.
 import { exportVideo, exportSupported, QUALITY } from './exporter.js';
 import { h } from './controls.js';
+import { hasSound } from '../engine/audio/graph.js';
 
 export function openExportDialog(dialog, { spec, comp, name, errors }) {
   dialog.innerHTML = '';
@@ -30,28 +31,31 @@ export function openExportDialog(dialog, { spec, comp, name, errors }) {
   [sizeSel, fpsSel, qSel].forEach(s => s.addEventListener('change', updateEstimate));
   updateEstimate();
 
+  const withSound = hasSound(comp);
+  const soundBox = h('input', { type: 'checkbox', checked: withSound || undefined, disabled: !withSound || undefined });
   const bar = h('progress', { max: 1, value: 0, class: 'export-progress' });
-  const msg = h('p', { class: 'mini', 'aria-live': 'polite' }, 'Video only (no sound yet). Frames are rendered one by one at exact times, so the result matches the preview frame for frame.');
+  const msg = h('p', { class: 'mini', 'aria-live': 'polite' }, 'Frames are rendered one by one at exact times, so the result matches the preview frame for frame.' + (withSound ? ' Sound is rendered separately, faster than real time, with every cue at its exact moment.' : ''));
   const go = h('button', { class: 'btn primary' }, 'Export MP4');
   let ctrl = null;
 
   go.onclick = async () => {
     ctrl = new AbortController();
-    go.disabled = true; [sizeSel, fpsSel, qSel].forEach(s => s.disabled = true);
+    go.disabled = true; [sizeSel, fpsSel, qSel, soundBox].forEach(s => s.disabled = true);
     try {
       const res = await exportVideo(spec, {
-        width: +sizeSel.value, fps: +fpsSel.value, quality: qSel.value, signal: ctrl.signal,
-        onProgress: ({ frame, frames, eta }) => { bar.max = frames; bar.value = frame; msg.textContent = `Frame ${frame} of ${frames} · about ${Math.ceil(eta)} s left`; }
+        width: +sizeSel.value, fps: +fpsSel.value, quality: qSel.value, audio: soundBox.checked, signal: ctrl.signal,
+        onProgress: ({ stage, frame, frames, eta }) => { bar.max = frames; bar.value = frame; msg.textContent = stage === 'sound' ? 'Rendering sound…' : `Frame ${frame} of ${frames} · about ${Math.ceil(eta)} s left`; }
       });
       const url = URL.createObjectURL(res.blob);
       const file = `${name}-${res.width}x${res.height}-${res.fps}fps.mp4`;
       const link = h('a', { href: url, download: file, class: 'btn primary' }, 'Download again');
-      msg.textContent = `Done in ${res.seconds.toFixed(1)} s: ${file}, ${(res.blob.size / 1e6).toFixed(1)} MB, ${res.frames} frames, ${res.codec}.`;
+      msg.textContent = `Done in ${res.seconds.toFixed(1)} s: ${file}, ${(res.blob.size / 1e6).toFixed(1)} MB, ${res.frames} frames, ${res.codec}` +
+        (res.audio ? ` + sound (${res.audio === 'opus' ? 'Opus: plays in browsers and VLC, not QuickTime' : 'AAC'}).` : res.audioNote ? `. Note: ${res.audioNote}.` : '.');
       go.replaceWith(link);
       link.click();                     // start the download right away
     } catch (e) {
       msg.textContent = e.name === 'AbortError' ? 'Export cancelled.' : `Export failed: ${e.message}`;
-      go.disabled = false; [sizeSel, fpsSel, qSel].forEach(s => s.disabled = false);
+      go.disabled = false; [sizeSel, fpsSel, qSel].forEach(s => s.disabled = false); soundBox.disabled = !withSound;
     }
   };
 
@@ -59,7 +63,8 @@ export function openExportDialog(dialog, { spec, comp, name, errors }) {
     h('div', { class: 'dlg-grid' },
       h('label', {}, 'Size'), sizeSel,
       h('label', {}, 'Frame rate'), fpsSel,
-      h('label', {}, 'Quality'), qSel),
+      h('label', {}, 'Quality'), qSel,
+      h('label', {}, 'Sound'), h('label', { class: 'mini' }, soundBox, withSound ? ' Include sound' : ' (this composition has no sound)')),
     estimate, bar, msg,
     h('div', { class: 'btn-row dlg-actions' }, go, close));
   dialog.addEventListener('close', () => ctrl?.abort(), { once: true });

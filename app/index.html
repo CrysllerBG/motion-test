@@ -43,6 +43,7 @@
       <input type="range" id="scrub" min="0" max="1000" step="1" value="0" aria-label="Scrub through the composition">
       <span class="readout" id="readout">0.00 s</span>
       <label class="loop"><input type="checkbox" id="loop"> Loop</label>
+      <button class="btn sound" id="soundBtn" aria-pressed="false" title="Browsers only play sound after a click">Sound off</button>
     </div>
   </section>
 
@@ -59,6 +60,7 @@
 
 <dialog id="exportDialog"></dialog>
 
+<script src="vendor/tone-14.8.49.js"></script>
 <script type="module" src="editor/main.js"></script>
 </body>
 </html>
