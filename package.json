@@ -6,7 +6,11 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "validate": "node tools/validate.mjs compositions/*.json"
+    "validate": "node tools/validate.mjs compositions/*.json",
+    "render": "node tools/render-frames.mjs",
+    "export": "node tools/export.mjs"
   },
-  "engines": { "node": ">=18" }
+  "engines": {
+    "node": ">=18"
+  }
 }

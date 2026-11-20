@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
 const APP = join(ROOT, 'app');
 const COMPS = join(ROOT, 'compositions');
+const EXPORTS = join(ROOT, 'exports');
 const PORT = Number(process.env.PORT) || 4321;
 const HOST = process.env.HOST || '127.0.0.1';   // only reachable from this computer
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
@@ -40,6 +41,17 @@ async function api(req, res, path) {
     clients.add(res);
     req.on('close', () => clients.delete(res));
     return;
+  }
+  // Save a rendered video into exports/ (used by tools/export.mjs)
+  const ex = path.match(/^\/api\/exports\/([^/]+)$/);
+  if (ex && req.method === 'PUT') {
+    const file = decodeURIComponent(ex[1]);
+    if (!/^[a-z0-9][a-z0-9_.-]{0,120}\.mp4$/i.test(file)) return send(res, 400, { error: 'bad file name' });
+    const chunks = []; let size = 0;
+    for await (const c of req) { size += c.length; if (size > 2e9) return send(res, 413, { error: 'too large' }); chunks.push(c); }
+    await mkdir(EXPORTS, { recursive: true });
+    await writeFile(join(EXPORTS, file), Buffer.concat(chunks));
+    return send(res, 200, { ok: true, path: 'exports/' + file, bytes: size });
   }
   const m = path.match(/^\/api\/compositions\/([^/]+)$/);
   if (m) {
