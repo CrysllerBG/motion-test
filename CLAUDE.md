@@ -75,6 +75,7 @@ tweaks survive.
   before telling me it's done.
 
 ## Known gaps
-- dungeon-roller-v2.html was never rendered and checked when it was written
-  (the build environment couldn't download Three.js or Tone.js). Verify it
-  visually and by ear before building on it.
+- dungeon-roller-v2.html has now been rendered and checked (frames at 8 key
+  times, no console errors, all 18 sound cues fire once, scrubbing is silent),
+  using the npm builds of Three.js r128 / Tone.js 14.8.49 vendored in app/vendor/.
+  It has not yet been checked by ear: the user still needs to listen to it.
