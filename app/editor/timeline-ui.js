@@ -2,7 +2,7 @@
 // what actually plays). One lane per layer, one row per animation. Waves show as a dashed line
 // across the whole piece, since they never stop.
 
-export function buildTimeline(root, comp, { onScrub, onSelect, selected } = {}) {
+export function buildTimeline(root, comp, { onScrub, onSelect, selected, onRetime, onInfo } = {}) {
   root.innerHTML = '';
   const D = comp.duration;
   const pct = s => (s / D * 100) + '%';
@@ -54,7 +54,9 @@ export function buildTimeline(root, comp, { onScrub, onSelect, selected } = {}) 
           bar.title = `${a.prop}: ${fmt(a.from)} → ${fmt(a.to)} · ${b.start.toFixed(2)}–${b.end.toFixed(2)} s · ${a.ease || 'linear'}` + (b.units.length > 1 ? ` · ${b.units.length} pieces staggered` : '');
           if (b.units.length > 1) bar.classList.add('staggered');
           if (selected?.layerId === L.id && selected?.anim === k) bar.classList.add('sel');
-          bar.onclick = e => { e.stopPropagation(); onSelect?.({ layerId: L.id, anim: k }); };
+          bar.onclick = e => e.stopPropagation();
+          bar.addEventListener('pointerdown', e => startDrag(e, bar, b, a, L.id, k));
+          bar.addEventListener('pointermove', e => { if (!dragging) bar.style.cursor = edgeAt(e, bar) ? 'ew-resize' : 'grab'; });
           b.el = bar;
           row.append(bar);
         }
@@ -91,6 +93,51 @@ export function buildTimeline(root, comp, { onScrub, onSelect, selected } = {}) 
     const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); };
     addEventListener('pointermove', move); addEventListener('pointerup', up);
   });
+
+  // ---- Dragging bars: move (middle), change start (left edge) or duration (right edge) ----
+  let dragging = false;
+  function edgeAt(e, bar) {
+    const r = bar.getBoundingClientRect();
+    if (r.width < 18) return e.clientX > r.right - 5 ? 'right' : null;
+    if (e.clientX - r.left < 6) return 'left';
+    if (r.right - e.clientX < 6) return 'right';
+    return null;
+  }
+  function startDrag(e, bar, b, a, layerId, k) {
+    if (e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    onSelect?.({ layerId, anim: k }, { quiet: true });
+    const mode = edgeAt(e, bar) || 'move';
+    const track = bar.parentElement.getBoundingClientRect();
+    const x0 = e.clientX, s0 = a.start, d0 = a.duration, offset = b.start - a.start, span = b.end - b.start - a.duration;
+    let moved = false, last = null;
+    bar.setPointerCapture(e.pointerId);
+    dragging = true;
+    const move = ev => {
+      let dt = (ev.clientX - x0) / track.width * D;
+      if (!moved && Math.abs(ev.clientX - x0) < 3) return;
+      moved = true;
+      const snap = v => ev.altKey ? +v.toFixed(3) : Math.round(v / 0.05) * 0.05;
+      let start = s0, dur = d0;
+      if (mode === 'move') start = Math.max(0, snap(s0 + dt));
+      else if (mode === 'right') dur = Math.max(0, snap(s0 + d0 + dt) - s0);
+      else { start = Math.min(s0 + d0, Math.max(0, snap(s0 + dt))); dur = s0 + d0 - start; }
+      start = +start.toFixed(3); dur = +dur.toFixed(3);
+      if (last && last.start === start && last.dur === dur) return;
+      last = { start, dur };
+      bar.style.left = pct(start + offset);
+      bar.style.width = `max(4px, ${pct(dur + span)})`;
+      onRetime?.(layerId, k, { start, duration: dur }, false);
+      onInfo?.(`${a.prop}: start ${start.toFixed(2)} s · duration ${dur.toFixed(2)} s · ends ${(start + dur + span).toFixed(2)} s` + (ev.altKey ? '' : '  (hold Alt to move freely)'));
+    };
+    const up = () => {
+      bar.removeEventListener('pointermove', move); bar.removeEventListener('pointerup', up); bar.removeEventListener('pointercancel', up);
+      dragging = false;
+      if (moved && last) onRetime?.(layerId, k, { start: last.start, duration: last.dur }, true);
+      else onSelect?.({ layerId, anim: k });
+    };
+    bar.addEventListener('pointermove', move); bar.addEventListener('pointerup', up); bar.addEventListener('pointercancel', up);
+  }
 
   return {
     update(t) {

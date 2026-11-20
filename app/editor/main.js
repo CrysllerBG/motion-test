@@ -1,103 +1,194 @@
-// Motion Studio editor: loads a composition, plays it, and (from milestone 2) edits it.
-import { compile } from '../engine/timeline.js';
+// Motion Studio editor: wires the store (spec + undo), the player, the panels and the server.
 import { loadFonts } from '../engine/fonts.js';
 import { Player } from './player.js';
 import { buildTimeline } from './timeline-ui.js';
+import { createStore, findLayer } from './store.js';
+import { renderInspector } from './inspector.js';
+import { renderLayers } from './layers-ui.js';
+import { createOverlay } from './overlay.js';
+import { openExportDialog } from './export-ui.js';
 
 const $ = id => document.getElementById(id);
-const state = { name: null, spec: null, comp: null, timeline: null, selected: null };
+let selected = null;           // { layerId, anim? }
+let timeline = null;
+let fontsKey = '';
+let infoTimer = null;
 
-const player = new Player($('stage'), { onTick: updateUI });
+const store = createStore({ onChange });
+const player = new Player($('stage'), { container: $('stageBox'), onTick });
+const overlay = createOverlay($('overlay'), { store, player, getSelected: () => selected, onInfo: info });
+player.onResize = () => overlay.draw();
 
-function updateUI(t) {
-  const comp = state.comp; if (!comp) return;
+function onTick(t) {
+  const comp = store.state.comp; if (!comp) return;
   $('readout').textContent = `${t.toFixed(2)} s`;
   $('scrub').value = Math.round(t / comp.duration * 1000);
   $('playBtn').textContent = player.playing ? 'Pause' : 'Play';
-  state.timeline?.update(t);
+  timeline?.update(t);
+  overlay.draw();
 }
 
-function status(msg, kind = '') { $('status').textContent = msg; $('status').className = 'status ' + kind; }
+// Called after every change to the spec. `source` says who made it, so the panel that
+// made a change isn't rebuilt under the user's pointer while they're still dragging.
+function onChange({ source, structure }) {
+  const s = store.state;
+  if (!s.comp) return;
+  player.setComp(s.comp);
+  if (selected?.layerId && !findLayer(s.spec, selected.layerId)) selected = null;
 
-// Turn the JSON into something playable. Errors are shown, and the last good version keeps playing.
-function applySpec(spec) {
-  const comp = compile(spec);
   const box = $('errors');
-  if (comp.errors.length) {
-    box.hidden = false;
-    box.textContent = `This composition has ${comp.errors.length} problem${comp.errors.length > 1 ? 's' : ''}:\n` + comp.errors.join('\n');
-    if (state.comp) return false;
-  } else box.hidden = true;
-  state.spec = spec;
-  state.comp = comp;
-  player.setComp(comp);
-  rebuildTimeline();
-  loadFonts(spec.fonts).then(() => player.invalidate());
-  return true;
+  box.hidden = !s.errors.length;
+  if (s.errors.length) box.textContent = `${s.errors.length} problem${s.errors.length > 1 ? 's' : ''} (the last working version keeps playing):\n` + s.errors.join('\n');
+
+  if (source !== 'timeline' || structure) rebuildTimeline();
+  if (source !== 'inspector' || structure) rebuildInspector();
+  if (structure || ['load', 'undo', 'redo', 'disk'].includes(source)) renderLayers($('layers'), { store, selected, select });
+
+  const key = JSON.stringify(s.spec.fonts || []);
+  if (key !== fontsKey) { fontsKey = key; loadFonts(s.spec.fonts).then(() => player.invalidate()); }
+  $('scrub').max = 1000;
+  updateSaveState();
+  player.invalidate();
 }
 
 function rebuildTimeline() {
-  state.timeline = buildTimeline($('timeline'), state.comp, {
-    selected: state.selected,
+  timeline = buildTimeline($('timeline'), store.state.comp, {
+    selected,
     onScrub: t => { player.pause(); player.seek(t); },
-    onSelect: sel => { state.selected = sel; rebuildTimeline(); player.invalidate(); }
+    onSelect: (sel, opts) => select(sel, opts),
+    onRetime: (layerId, k, { start, duration }, final) => {
+      store.edit(spec => { const a = findLayer(spec, layerId).layer.animate[k]; a.start = start; a.duration = duration; },
+        { key: `${layerId}.anim${k}.time`, source: 'timeline', structure: final });
+      if (final) { store.endGesture(); info(null, true); }
+    },
+    onInfo: info
   });
-  state.timeline.update(player.t);
+  timeline.update(player.t);
+}
+function rebuildInspector() {
+  renderInspector($('inspector'), { store, selected, select, player });
 }
 
-async function load(name) {
+function select(sel, { quiet = false } = {}) {
+  selected = sel;
+  rebuildInspector();
+  overlay.draw();
+  if (quiet) return;             // mid-drag in the timeline: don't rebuild it under the pointer
+  rebuildTimeline();
+  renderLayers($('layers'), { store, selected, select });
+}
+
+function info(msg, done) {
+  clearTimeout(infoTimer);
+  if (msg) { $('status').textContent = msg; $('status').className = 'status'; }
+  if (done) infoTimer = setTimeout(updateSaveState, 1200);
+}
+function updateSaveState() {
+  const s = store.state;
+  const dirty = store.dirty;
+  $('saveBtn').classList.toggle('dirty', dirty);
+  $('saveBtn').textContent = dirty ? 'Save •' : 'Saved';
+  $('undoBtn').disabled = !s.undo.length;
+  $('redoBtn').disabled = !s.redo.length;
+  $('status').className = 'status' + (s.errors.length ? ' warn' : '');
+  $('status').textContent = `${s.spec.name || s.name} · ${s.comp.duration} s · ${s.comp.tracks.length} tracks` + (s.errors.length ? ' · has problems' : '');
+  document.title = (dirty ? '• ' : '') + (s.spec.name || s.name) + ' · Motion Studio';
+}
+
+async function save() {
+  try {
+    await store.save();
+    info(`Saved compositions/${store.state.name}.json`, true);
+  } catch (e) { info(`Save failed: ${e.message}`); $('status').className = 'status warn'; }
+}
+
+async function load(name, { keepTime = false } = {}) {
   const res = await fetch('/api/compositions/' + encodeURIComponent(name));
-  if (!res.ok) { status(`Couldn't load "${name}"`, 'warn'); return; }
+  if (!res.ok) { info(`Couldn't load "${name}"`); return; }
   let spec;
   try { spec = await res.json(); }
   catch (e) { $('errors').hidden = false; $('errors').textContent = `${name}.json is not valid JSON: ${e.message}`; return; }
-  if (state.name !== name) { state.selected = null; player.seek(0); }
-  state.name = name;
+  selected = null;
+  if (!keepTime) player.seek(0);
+  store.load(name, spec);
   try { localStorage.setItem('ms.last', name); } catch {}
   const url = new URL(location.href); url.searchParams.set('c', name); history.replaceState(null, '', url);
   $('compSelect').value = name;
-  if (applySpec(spec)) status(`${spec.name || name} · ${state.comp.duration} s · ${state.comp.tracks.length} tracks`);
+}
+
+async function refreshList(selectName) {
+  const names = await (await fetch('/api/compositions')).json();
+  $('compSelect').innerHTML = names.map(n => `<option value="${n}">${n}</option>`).join('');
+  if (selectName) $('compSelect').value = selectName;
+  return names;
 }
 
 async function init() {
-  const names = await (await fetch('/api/compositions')).json();
-  $('compSelect').innerHTML = names.map(n => `<option value="${n}">${n}</option>`).join('');
+  const names = await refreshList();
   let saved = null; try { saved = localStorage.getItem('ms.last'); } catch {}
   const want = new URLSearchParams(location.search).get('c') || saved;
   const first = names.includes(want) ? want : names[0];
   if (first) { await load(first); if (!matchMedia('(prefers-reduced-motion: reduce)').matches) player.play(); }
-  else status('No compositions yet: ask Claude Code to make one in compositions/', 'warn');
+  else info('No compositions yet: click New, or ask Claude Code to make one');
 
-  // Live reload: the server tells us when a composition file changed on disk.
+  // Live reload: the server tells us when a composition file changed on disk (e.g. Claude Code edited it).
   const ev = new EventSource('/api/events');
-  ev.addEventListener('changed', e => {
+  ev.addEventListener('changed', async e => {
     const { name } = JSON.parse(e.data);
-    if (name === state.name) { load(name).then(() => status(`Reloaded: ${name}.json changed on disk`)); }
-    else if (![...$('compSelect').options].some(o => o.value === name)) refreshList();
+    if (name !== store.state.name) { refreshList(store.state.name); return; }
+    const res = await fetch('/api/compositions/' + encodeURIComponent(name));
+    let spec; try { spec = await res.json(); } catch { info(`${name}.json changed on disk but isn't valid JSON yet`); return; }
+    if (store.dirty && !confirm(`${name}.json was changed on disk (maybe by Claude Code).\n\nLoad the new version? Your unsaved edits stay reachable with Undo.\nCancel keeps your version; saving will overwrite the file.`)) return;
+    store.replaceFromDisk(spec);
+    info(`Reloaded: ${name}.json changed on disk`, true);
   });
 }
-async function refreshList() {
-  const names = await (await fetch('/api/compositions')).json();
-  $('compSelect').innerHTML = names.map(n => `<option value="${n}">${n}</option>`).join('');
-  $('compSelect').value = state.name;
-}
 
-// Controls
-$('compSelect').onchange = e => load(e.target.value);
+// ---- Controls ----
+$('compSelect').onchange = e => {
+  if (store.dirty && !confirm('You have unsaved changes. Switch anyway? (They will be lost.)')) { e.target.value = store.state.name; return; }
+  load(e.target.value);
+};
+$('newBtn').onclick = async () => {
+  if (store.dirty && !confirm('You have unsaved changes. Start a new composition anyway?')) return;
+  let name = prompt('Name for the new composition (letters, digits, - and _):', 'untitled');
+  if (!name) return;
+  name = name.trim().toLowerCase().replace(/\s+/g, '-');
+  if (!/^[a-z0-9][a-z0-9_-]{0,80}$/.test(name)) { alert('Use letters, digits, - and _ only.'); return; }
+  const names = await refreshList();
+  if (names.includes(name)) { alert(`"${name}" already exists.`); return; }
+  const spec = { name, duration: 5, fps: 30, width: 1920, height: 1080, seed: 1, background: '#0e0f12', fonts: ['Inter:600'],
+    layers: [{ id: 'title', type: 'text', text: name.replace(/-/g, ' '), props: { y: 50, size: 7, font: 'Inter', weight: 600, color: '#ffffff' },
+      animate: [{ prop: 'opacity', from: 0, to: 1, start: 0.3, duration: 0.8, ease: 'outCubic' }] }] };
+  await fetch('/api/compositions/' + name, { method: 'PUT', body: JSON.stringify(spec, null, 2) });
+  await refreshList(name);
+  await load(name);
+};
+$('undoBtn').onclick = () => store.undo();
+$('redoBtn').onclick = () => store.redo();
+$('saveBtn').onclick = save;
+$('exportBtn').onclick = () => openExportDialog($('exportDialog'), { comp: store.state.comp, spec: store.state.spec, name: store.state.name, errors: store.state.errors });
 $('playBtn').onclick = () => player.toggle();
 $('replayBtn').onclick = () => player.replay();
-const frameStep = dir => { player.pause(); const f = 1 / state.comp.fps; player.seek(Math.round(player.t / f + dir) * f); };
+const frameStep = dir => { player.pause(); const f = 1 / store.state.comp.fps; player.seek(Math.round(player.t / f + dir) * f); };
 $('prevFrame').onclick = () => frameStep(-1);
 $('nextFrame').onclick = () => frameStep(1);
-$('scrub').oninput = e => { player.pause(); player.seek(e.target.value / 1000 * state.comp.duration); };
+$('scrub').oninput = e => { player.pause(); player.seek(e.target.value / 1000 * store.state.comp.duration); };
 $('loop').onchange = e => { player.loop = e.target.checked; };
+
 addEventListener('keydown', e => {
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); save(); return; }
   if (e.target.closest('input, textarea, select, [contenteditable]')) return;
-  if (e.code === 'Space') { e.preventDefault(); player.toggle(); }
+  if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? store.redo() : store.undo(); }
+  else if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); store.redo(); }
+  else if (e.code === 'Space') { e.preventDefault(); player.toggle(); }
   else if (e.key === 'ArrowLeft') { e.preventDefault(); frameStep(-1); }
   else if (e.key === 'ArrowRight') { e.preventDefault(); frameStep(1); }
   else if (e.key === 'Home') player.seek(0);
+  else if (e.key === 'Escape') select(null);
 });
+addEventListener('beforeunload', e => { if (store.dirty) { e.preventDefault(); e.returnValue = ''; } });
 
-window.studio = { player, state, load };   // handy from the browser console
+window.studio = { player, store, load, select, get selected() { return selected; } };   // handy from the console (and for tests)
 init();

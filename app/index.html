@@ -9,15 +9,31 @@
 <body>
 <header class="top">
   <strong class="brand">Motion Studio</strong>
-  <label class="picker">Composition
+  <label class="picker"><span>Composition</span>
     <select id="compSelect" aria-label="Composition"></select>
   </label>
+  <button class="btn small" id="newBtn" title="Start a new, empty composition">New</button>
+  <span class="sep"></span>
+  <button class="btn small" id="undoBtn" title="Undo (Ctrl/Cmd+Z)">Undo</button>
+  <button class="btn small" id="redoBtn" title="Redo (Ctrl/Cmd+Shift+Z)">Redo</button>
+  <button class="btn small primary" id="saveBtn" title="Save to compositions/…json (Ctrl/Cmd+S)">Save</button>
+  <button class="btn small" id="exportBtn" title="Render an MP4 video">Export video</button>
   <span class="status" id="status" role="status"></span>
 </header>
 
 <main class="workspace">
+  <aside class="panel layers" aria-label="Layers">
+    <h2 class="panel-title">Layers</h2>
+    <div id="layers"></div>
+  </aside>
+
   <section class="stage-col">
-    <div class="stage-box" id="stageBox"><canvas id="stage"></canvas></div>
+    <div class="stage-box" id="stageBox">
+      <div class="stage-frame">
+        <canvas id="stage"></canvas>
+        <canvas id="overlay" aria-hidden="true"></canvas>
+      </div>
+    </div>
     <div class="errors" id="errors" hidden></div>
     <div class="controls">
       <button class="btn" id="playBtn" title="Play / pause (Space)">Play</button>
@@ -29,12 +45,19 @@
       <label class="loop"><input type="checkbox" id="loop"> Loop</label>
     </div>
   </section>
+
+  <aside class="panel inspector" aria-label="Inspector">
+    <h2 class="panel-title">Inspector</h2>
+    <div id="inspector"></div>
+  </aside>
 </main>
 
 <section class="timeline" aria-label="Timeline">
-  <div class="tl-head"><h2>Timeline</h2><code>lanes are built from the compiled tracks</code></div>
+  <div class="tl-head"><h2>Timeline</h2><code>drag a bar to move it · drag its edges to retime · click empty space to scrub</code></div>
   <div id="timeline"></div>
 </section>
+
+<dialog id="exportDialog"></dialog>
 
 <script type="module" src="editor/main.js"></script>
 </body>

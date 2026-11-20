@@ -14,11 +14,16 @@
       "type": "background",
       "label": "Background",
       "props": {
-        "fill": { "type": "radial", "x": 50, "y": 110, "rx": 120, "ry": 90, "stops": [["#0d1a2b", 0], ["#070b14", 0.55], ["#020306", 1]] }
+        "fill": {
+          "type": "radial",
+          "x": 50,
+          "y": 110,
+          "rx": 120,
+          "ry": 90,
+          "stops": [["#0d1a2b", 0], ["#070b14", 0.55], ["#020306", 1]]
+        }
       },
-      "animate": [
-        { "prop": "opacity", "from": 0, "to": 1, "start": 0, "duration": 1, "ease": "inOutQuad" }
-      ]
+      "animate": [{ "prop": "opacity", "from": 0, "to": 1, "start": 0, "duration": 1, "ease": "inOutQuad" }]
     },
     {
       "id": "glowA",
@@ -46,26 +51,20 @@
       "id": "content",
       "type": "group",
       "label": "Fade out",
-      "animate": [
-        { "prop": "opacity", "from": 1, "to": 0, "start": 5.5, "duration": 0.5, "ease": "inQuad" }
-      ],
+      "animate": [{ "prop": "opacity", "from": 1, "to": 0, "start": 5.5, "duration": 0.5, "ease": "inQuad" }],
       "children": [
         {
           "id": "composition",
           "type": "group",
           "label": "Hold",
-          "animate": [
-            { "prop": "scale", "from": 1, "to": 1.015, "start": 3.6, "duration": 1.9, "ease": "inOutQuad" }
-          ],
+          "animate": [{ "prop": "scale", "from": 1, "to": 1.015, "start": 3.6, "duration": 1.9, "ease": "inOutQuad" }],
           "children": [
             {
               "id": "rule",
               "type": "line",
               "label": "Line",
               "props": { "y": 54.06, "length": 46, "thickness": 0.127, "color": "#5fe3b4", "origin": "center" },
-              "animate": [
-                { "prop": "draw", "from": 0, "to": 1, "start": 0.8, "duration": 1.2, "ease": "inOutQuad" }
-              ]
+              "animate": [{ "prop": "draw", "from": 0, "to": 1, "start": 0.8, "duration": 1.2, "ease": "inOutQuad" }]
             },
             {
               "id": "title",
@@ -75,8 +74,13 @@
               "split": "letters",
               "stagger": 0.06,
               "props": {
-                "y": 43.56, "size": 7.2, "font": "Italiana", "color": "#e8eef2", "letterSpacing": 0.16,
-                "shadowColor": "#5fe3b440", "shadowBlur": 2
+                "y": 43.56,
+                "size": 7.2,
+                "font": "Italiana",
+                "color": "#e8eef2",
+                "letterSpacing": 0.16,
+                "shadowColor": "#5fe3b440",
+                "shadowBlur": 2
               },
               "animate": [
                 { "prop": "opacity", "from": 0, "to": 1, "start": 1.5, "duration": 0.7, "ease": "outCubic" },
@@ -89,7 +93,14 @@
               "type": "text",
               "label": "Subtitle",
               "text": "A SHORT FILM",
-              "props": { "y": 60.49, "size": 1.7, "font": "Jost", "weight": 300, "color": "#8794a3", "letterSpacing": 0.5 },
+              "props": {
+                "y": 60.49,
+                "size": 1.7,
+                "font": "Jost",
+                "weight": 300,
+                "color": "#8794a3",
+                "letterSpacing": 0.5
+              },
               "animate": [
                 { "prop": "opacity", "from": 0, "to": 1, "start": 2.8, "duration": 0.8, "ease": "outCubic" },
                 { "prop": "dy", "from": 1.477, "to": 0, "start": 2.8, "duration": 0.8, "ease": "outCubic" }

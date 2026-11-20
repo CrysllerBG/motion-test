@@ -21,7 +21,7 @@ const validName = n => /^[a-z0-9][a-z0-9_-]{0,80}$/i.test(n);
 const compPath = n => join(COMPS, n + '.json');
 
 const clients = new Set();     // open editors listening for changes (Server-Sent Events)
-const recentWrites = new Map(); // files we just wrote ourselves, so we don't echo them back as "changed"
+const lastWritten = new Map();  // what we last saved per file, so our own saves aren't echoed back as "changed"
 
 function send(res, code, body, type = 'application/json; charset=utf-8') {
   res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store' });
@@ -54,8 +54,9 @@ async function api(req, res, path) {
       for await (const chunk of req) { body += chunk; if (body.length > 5e6) return send(res, 413, { error: 'too large' }); }
       try { JSON.parse(body); } catch { return send(res, 400, { error: 'not valid JSON' }); }
       await mkdir(COMPS, { recursive: true });
-      recentWrites.set(name, Date.now());
-      await writeFile(compPath(name), body.endsWith('\n') ? body : body + '\n');
+      const text = body.endsWith('\n') ? body : body + '\n';
+      lastWritten.set(name, text);
+      await writeFile(compPath(name), text);
       return send(res, 200, { ok: true });
     }
   }
@@ -83,8 +84,12 @@ watch(COMPS, (_, filename) => {
   if (!filename || !filename.endsWith('.json')) return;
   const name = filename.slice(0, -5);
   clearTimeout(debounce.get(name));
-  debounce.set(name, setTimeout(() => {
-    if (Date.now() - (recentWrites.get(name) || 0) < 600) return;   // our own save
+  debounce.set(name, setTimeout(async () => {
+    // Compare contents rather than timing: if the file holds exactly what an editor just saved,
+    // it's our own write; anything else (Claude Code, a text editor, git) is a real change.
+    const now = await readFile(compPath(name), 'utf8').catch(() => null);
+    if (now !== null && now === lastWritten.get(name)) return;
+    lastWritten.delete(name);
     for (const c of clients) c.write(`event: changed\ndata: ${JSON.stringify({ name })}\n\n`);
   }, 120));
 });

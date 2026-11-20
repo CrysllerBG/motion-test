@@ -3,7 +3,8 @@
 import { paintFrame } from '../engine/render.js';
 
 export class Player {
-  constructor(canvas, { onTick } = {}) {
+  constructor(canvas, { onTick, container } = {}) {
+    this.container = container || canvas.parentElement;
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.onTick = onTick || (() => {});
@@ -14,17 +15,19 @@ export class Player {
     this.hidden = new Set();      // layers hidden in the editor (not saved)
     this.dirty = true;
     this.last = null;
-    new ResizeObserver(() => this.resize()).observe(canvas.parentElement);
+    new ResizeObserver(() => this.resize()).observe(this.container);
     requestAnimationFrame(now => this.frame(now));
   }
   setComp(comp) {
+    const prev = this.comp;
     this.comp = comp;
     this.t = Math.min(this.t, comp.duration);
-    this.resize();
+    if (!prev || prev.width / prev.height !== comp.width / comp.height) this.resize();
+    this.dirty = true;
   }
   resize() {
     if (!this.comp) return;
-    const box = this.canvas.parentElement.getBoundingClientRect();
+    const box = this.container.getBoundingClientRect();
     const aspect = this.comp.width / this.comp.height;
     // fit the frame inside the available box, keeping the composition's aspect ratio
     let w = box.width, h = w / aspect;
@@ -35,6 +38,7 @@ export class Player {
     this.canvas.width = Math.max(2, Math.round(w * dpr));
     this.canvas.height = Math.max(2, Math.round(h * dpr));
     this.dirty = true;
+    this.onResize?.(w, h);
   }
   seek(t) { this.t = Math.max(0, Math.min(this.comp ? this.comp.duration : 0, t)); this.dirty = true; }
   play() { if (this.comp && this.t >= this.comp.duration) this.t = 0; this.playing = true; this.dirty = true; }
