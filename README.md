@@ -8,7 +8,7 @@ This repo has two parts:
 
 - **Motion Studio** (`app/`, `server.js`): an editor where a composition is a JSON file.
   You describe a video to Claude Code, it writes the JSON, and you tweak every
-  number in the UI, then export an MP4.
+  number in the UI, then export an MP4, with synthesized sound and 3D layers.
 - **The reference pieces** (`reference/`): the hand-coded HTML originals the studio grew from.
 
 ## Motion Studio
@@ -39,6 +39,8 @@ would be missing there.)
 | **Inspector** (right) | every property as a slider, number, colour or menu. **Drag a property's name sideways** to scrub its value (Shift = 10× faster). ◆ marks animated properties, ↺ resets to default. Animations show from / to / start / duration / easing with a curve preview. |
 | **Stage** | drag the purple handle to move the selected layer |
 | **Timeline** (bottom) | drag a bar to move an animation in time; drag its edges to change when it starts or how long it lasts (snaps to 0.05 s; hold Alt to move freely). Click empty space to scrub. |
+| **Sound** | click **Sound off** (under the stage) to turn it on. Continuous sounds (drone, fire, wind, crackle) are listed under **Sound** in the Layers panel and animate like any layer. One-shot sounds are diamonds in the **♪ Cues** lane: drag to retime, **+** to add one at the playhead, ▶ Preview in the inspector. Every sound is synthesized, no audio files. |
+| **3D** | **+ Add layer → 3D die (D20)**. Animate `tumble` 0→1 to roll it onto any `face`; its shadow falls on the layers behind it. |
 
 Keys: Space play/pause · ← → one frame · Home to start · Ctrl/Cmd+Z undo · Ctrl/Cmd+Shift+Z redo ·
 Ctrl/Cmd+S save · Esc deselect.
@@ -49,19 +51,23 @@ edits, the editor asks before reloading, and Undo brings your edits back.
 ### Export
 
 **Export video** renders each frame at its exact time and encodes an H.264 MP4 in the
-browser, so the video matches the preview frame for frame. From the command line
+browser, so the video matches the preview frame for frame. Sound is rendered separately
+(faster than real time, every cue at its exact moment) and added as AAC. From the command line
 (with the server running, needs Playwright):
 
 ```bash
 npm run export -- northern-lights
 ```
 
+`compositions/dungeon-roller-3d.json` shows everything together: a 3D die, 2D layers
+and a full soundscape.
+
 ### Files
 
 | path | what |
 |---|---|
 | `compositions/*.json` | your pieces ([format reference](docs/composition-format.md)) |
-| `app/engine/` | compile → tracks → `scene` → paint; one module per layer type in `elements/` |
+| `app/engine/` | compile → tracks → `scene` → paint; one module per layer type in `elements/`; sound in `audio/`; Three.js support in `three/` |
 | `app/editor/` | the editor UI and the exporter |
 | `tools/` | `validate.mjs`, `render-frames.mjs` (PNG frames), `export.mjs` (MP4), `gen-docs.mjs` |
 | `exports/`, `renders/` | output (not committed) |
@@ -85,4 +91,5 @@ original frame for frame.
 `CLAUDE.md` describes the architecture, the prompt-to-composition workflow and working
 preferences. Claude Code reads it automatically at the start of every session.
 
-Third-party code: `app/vendor/mp4-muxer-5.2.2.mjs` (MIT, see `app/vendor/mp4-muxer-LICENSE.txt`).
+Third-party code in `app/vendor/`, all MIT-licensed (licences alongside): mp4-muxer 5.2.2,
+Three.js r128, Tone.js 14.8.49.

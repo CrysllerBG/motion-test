@@ -1,0 +1,371 @@
+{
+  "name": "Dungeon Roller: 3D title card with sound",
+  "notes": "The 2D title card rebuilt with a real 3D D20 and a synthesized soundscape. Torches catch with a whoomp and crackle; the die drops in tumbling, bounces to rest on 20 with a boom and a chord, and rises out of the banner's way; the banner unrolls, the title stamps on, a bell under the tagline, a chime for 'Coming soon', then everything fades to black.",
+  "duration": 10,
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "seed": 21,
+  "background": "#000000",
+  "fonts": ["Uncial Antiqua", "IM Fell English:400i", "IM Fell English SC"],
+  "audio": { "volume": 0.85, "reverb": 0.35, "decay": 5 },
+  "layers": [
+    {
+      "id": "wall",
+      "type": "group",
+      "label": "Wall",
+      "animate": [{ "prop": "opacity", "from": 0, "to": 1, "start": 0, "duration": 1.2, "ease": "inOutQuad" }],
+      "children": [
+        {
+          "id": "stone",
+          "type": "background",
+          "label": "Stone",
+          "props": {
+            "fill": {
+              "type": "radial",
+              "x": 50,
+              "y": 42,
+              "rx": 75,
+              "ry": 85,
+              "stops": [["#2b2019", 0], ["#140e0a", 0.6], ["#060403", 1]]
+            }
+          }
+        },
+        {
+          "id": "pits",
+          "type": "noise",
+          "label": "Stone texture",
+          "props": { "opacity": 0.45, "blend": "normal", "kind": "stone", "color": "#000000" }
+        }
+      ]
+    },
+    {
+      "id": "torchL",
+      "type": "group",
+      "label": "Left torch",
+      "animate": [{ "prop": "opacity", "from": 0, "to": 1, "start": 0.2, "duration": 0.9, "ease": "outCubic" }],
+      "children": [
+        {
+          "id": "lightL",
+          "type": "glow",
+          "label": "Torchlight",
+          "props": { "x": 12, "y": 50, "width": 42, "height": 48, "color": "#ff8a3d73", "softness": 5 },
+          "animate": [
+            { "prop": "opacity", "wave": { "amp": 0.08, "period": 0.23 } },
+            { "prop": "opacity", "wave": { "amp": 0.06, "period": 0.41, "phase": 0.3 } },
+            { "prop": "opacity", "wave": { "amp": 0.04, "period": 0.13, "phase": 0.6 } }
+          ]
+        },
+        {
+          "id": "bracketL",
+          "type": "shape",
+          "label": "Sconce bracket",
+          "props": {
+            "shape": "rect",
+            "x": 12,
+            "y": 66.5,
+            "width": 0.7,
+            "height": 6,
+            "fill": "#17110c",
+            "stroke": "#4a3526",
+            "strokeWidth": 0.08
+          }
+        },
+        {
+          "id": "cupL",
+          "type": "shape",
+          "label": "Sconce cup",
+          "props": {
+            "shape": "rect",
+            "x": 12,
+            "y": 61.6,
+            "width": 2.6,
+            "height": 1.1,
+            "radius": 0.2,
+            "fill": "#231a13",
+            "stroke": "#6b4a30",
+            "strokeWidth": 0.08
+          }
+        },
+        {
+          "id": "flameL",
+          "type": "glow",
+          "label": "Flame",
+          "props": {
+            "blend": "lighter",
+            "x": 12,
+            "y": 57.2,
+            "width": 3.2,
+            "height": 7.5,
+            "color": "#ffc35e",
+            "softness": 0.7
+          },
+          "animate": [
+            { "prop": "scale", "wave": { "amp": 0.08, "period": 0.19 } },
+            { "prop": "dx", "wave": { "amp": 0.15, "period": 0.37 } }
+          ]
+        },
+        {
+          "id": "embersL",
+          "type": "particles",
+          "label": "Embers",
+          "props": { "preset": "embers", "count": 45, "x": 12, "y": 60, "width": 2 }
+        }
+      ]
+    },
+    {
+      "id": "torchR",
+      "type": "group",
+      "label": "Right torch",
+      "animate": [{ "prop": "opacity", "from": 0, "to": 1, "start": 0.6, "duration": 0.9, "ease": "outCubic" }],
+      "children": [
+        {
+          "id": "lightR",
+          "type": "glow",
+          "label": "Torchlight",
+          "props": { "x": 88, "y": 50, "width": 42, "height": 48, "color": "#ff8a3d73", "softness": 5 },
+          "animate": [
+            { "prop": "opacity", "wave": { "amp": 0.08, "period": 0.27, "phase": 0.5 } },
+            { "prop": "opacity", "wave": { "amp": 0.06, "period": 0.43 } },
+            { "prop": "opacity", "wave": { "amp": 0.04, "period": 0.11, "phase": 0.2 } }
+          ]
+        },
+        {
+          "id": "bracketR",
+          "type": "shape",
+          "label": "Sconce bracket",
+          "props": {
+            "shape": "rect",
+            "x": 88,
+            "y": 66.5,
+            "width": 0.7,
+            "height": 6,
+            "fill": "#17110c",
+            "stroke": "#4a3526",
+            "strokeWidth": 0.08
+          }
+        },
+        {
+          "id": "cupR",
+          "type": "shape",
+          "label": "Sconce cup",
+          "props": {
+            "shape": "rect",
+            "x": 88,
+            "y": 61.6,
+            "width": 2.6,
+            "height": 1.1,
+            "radius": 0.2,
+            "fill": "#231a13",
+            "stroke": "#6b4a30",
+            "strokeWidth": 0.08
+          }
+        },
+        {
+          "id": "flameR",
+          "type": "glow",
+          "label": "Flame",
+          "props": {
+            "blend": "lighter",
+            "x": 88,
+            "y": 57.2,
+            "width": 3.2,
+            "height": 7.5,
+            "color": "#ffc35e",
+            "softness": 0.7
+          },
+          "animate": [
+            { "prop": "scale", "wave": { "amp": 0.08, "period": 0.21, "phase": 0.4 } },
+            { "prop": "dx", "wave": { "amp": 0.15, "period": 0.33 } }
+          ]
+        },
+        {
+          "id": "embersR",
+          "type": "particles",
+          "label": "Embers",
+          "props": { "preset": "embers", "count": 45, "x": 88, "y": 60, "width": 2, "seed": 2 }
+        }
+      ]
+    },
+    {
+      "id": "dieGlow",
+      "type": "glow",
+      "label": "Glow",
+      "props": { "x": 50, "y": 34, "width": 30, "height": 30, "color": "#ffb54d59", "softness": 2 },
+      "animate": [
+        { "prop": "opacity", "from": 0, "to": 1, "start": 2.7, "duration": 0.5, "ease": "outCubic" },
+        { "prop": "opacity", "wave": { "amp": 0.12, "period": 1.6 } },
+        { "prop": "dy", "from": 0, "to": -4, "start": 3.8, "duration": 0.8, "ease": "inOutCubic" }
+      ]
+    },
+    {
+      "id": "die",
+      "type": "d20",
+      "label": "D20 (3D)",
+      "props": {
+        "x": 50,
+        "y": 34,
+        "size": 15,
+        "turns": 4,
+        "face": 20,
+        "keyLight": 1.5,
+        "warmLight": 0.8,
+        "shadow": 0.45
+      },
+      "animate": [
+        { "prop": "opacity", "from": 0, "to": 1, "start": 0.9, "duration": 0.25, "ease": "outCubic" },
+        { "prop": "y", "from": -12, "to": 34, "start": 0.9, "duration": 1.8, "ease": "outBounce" },
+        { "prop": "tumble", "from": 0, "to": 1, "start": 0.9, "duration": 1.8, "ease": "outCubic" },
+        { "prop": "wobble", "from": 10, "to": 0, "start": 2.7, "duration": 0.7, "ease": "outBounce" },
+        { "prop": "glow", "from": 0, "to": 1, "start": 2.7, "duration": 0.5, "ease": "outCubic" },
+        { "prop": "y", "to": 27, "start": 3.8, "duration": 0.8, "ease": "inOutCubic" },
+        { "prop": "size", "from": 15, "to": 12, "start": 3.8, "duration": 0.8, "ease": "inOutCubic" }
+      ]
+    },
+    {
+      "id": "flash",
+      "type": "glow",
+      "label": "Flash",
+      "props": { "x": 50, "y": 34, "width": 80, "height": 56, "color": "#ffd696", "softness": 3 },
+      "animate": [
+        { "prop": "opacity", "from": 0, "to": 0.85, "start": 2.7, "duration": 0.08, "ease": "linear" },
+        { "prop": "opacity", "to": 0, "start": 2.78, "duration": 0.9, "ease": "outCubic" }
+      ]
+    },
+    {
+      "id": "banner",
+      "type": "shape",
+      "label": "Banner",
+      "props": {
+        "shape": "rect",
+        "x": 50,
+        "y": 66,
+        "width": 0,
+        "height": 10,
+        "radius": 0.5,
+        "fill": "#d9c194",
+        "stroke": "#6b4423",
+        "strokeWidth": 0.22
+      },
+      "animate": [{ "prop": "width", "from": 0, "to": 64, "start": 4, "duration": 0.75, "ease": "outCubic" }]
+    },
+    {
+      "id": "title",
+      "type": "text",
+      "label": "Title",
+      "text": "Dungeon Roller",
+      "props": { "y": 66, "size": 5.4, "font": "Uncial Antiqua", "color": "#2a170c", "letterSpacing": 0.03 },
+      "animate": [
+        { "prop": "opacity", "from": 0, "to": 1, "start": 4.6, "duration": 0.2, "ease": "outCubic" },
+        { "prop": "scale", "from": 1.5, "to": 1, "start": 4.6, "duration": 0.35, "ease": "outCubic" },
+        { "prop": "blur", "from": 0.4, "to": 0, "start": 4.6, "duration": 0.3, "ease": "outCubic" }
+      ]
+    },
+    {
+      "id": "tagline",
+      "type": "text",
+      "label": "Tagline",
+      "text": "Fortune favours the bold",
+      "split": "words",
+      "stagger": 0.14,
+      "props": {
+        "y": 80,
+        "size": 2.7,
+        "font": "IM Fell English",
+        "italic": true,
+        "color": "#ecd7a6",
+        "shadowColor": "#e0873a8c",
+        "shadowBlur": 1.2
+      },
+      "animate": [
+        { "prop": "opacity", "from": 0, "to": 1, "start": 5.6, "duration": 0.6, "ease": "outCubic" },
+        { "prop": "dy", "from": 1, "to": 0, "start": 5.6, "duration": 0.7, "ease": "outCubic" }
+      ]
+    },
+    {
+      "id": "coming",
+      "type": "text",
+      "label": "Coming soon",
+      "text": "COMING SOON",
+      "split": "letters",
+      "stagger": 0.03,
+      "staggerFrom": "center",
+      "props": { "y": 88, "size": 1.6, "font": "IM Fell English SC", "color": "#bba47b", "letterSpacing": 0.42 },
+      "animate": [{ "prop": "opacity", "from": 0, "to": 1, "start": 6.8, "duration": 0.5, "ease": "outCubic" }]
+    },
+    {
+      "id": "grain",
+      "type": "noise",
+      "label": "Film grain",
+      "props": { "opacity": 0.06 }
+    },
+    {
+      "id": "vignette",
+      "type": "vignette",
+      "label": "Vignette",
+      "props": { "strength": 0.75 }
+    },
+    {
+      "id": "fadeOut",
+      "type": "shape",
+      "label": "Fade to black",
+      "props": { "x": 50, "y": 50, "width": 100, "height": 56.25, "fill": "#000000" },
+      "animate": [{ "prop": "opacity", "from": 0, "to": 1, "start": 9.1, "duration": 0.9, "ease": "inOutQuad" }]
+    }
+  ],
+  "sounds": [
+    {
+      "id": "drone",
+      "type": "drone",
+      "label": "Drone",
+      "props": { "volume": 0.45, "note": "D1", "cutoff": 220 },
+      "animate": [
+        { "prop": "volume", "from": 0, "to": 0.45, "start": 0, "duration": 2.5, "ease": "inOutQuad" },
+        { "prop": "volume", "to": 0, "start": 9.1, "duration": 0.9, "ease": "inOutQuad" }
+      ]
+    },
+    {
+      "id": "fire",
+      "type": "hiss",
+      "label": "Torch fire",
+      "props": { "volume": 0.35, "noise": "brown", "filter": "bandpass", "cutoff": 700, "q": 1 },
+      "animate": [
+        { "prop": "volume", "from": 0, "to": 0.35, "start": 0.2, "duration": 1, "ease": "outCubic" },
+        { "prop": "volume", "wave": { "amp": 0.05, "period": 0.37 } },
+        { "prop": "volume", "to": 0, "start": 9.1, "duration": 0.9, "ease": "inOutQuad" }
+      ]
+    },
+    {
+      "id": "crackle",
+      "type": "crackle",
+      "label": "Crackle",
+      "props": { "volume": 0.4, "rate": 7 },
+      "animate": [
+        { "prop": "volume", "from": 0, "to": 0.4, "start": 0.2, "duration": 0.8 },
+        { "prop": "volume", "to": 0, "start": 9.1, "duration": 0.9, "ease": "inOutQuad" }
+      ]
+    },
+    {
+      "id": "whoosh",
+      "type": "hiss",
+      "label": "Die whoosh",
+      "props": { "volume": 0, "noise": "pink", "filter": "bandpass", "cutoff": 500, "q": 1.5 },
+      "animate": [
+        { "prop": "volume", "from": 0, "to": 0.55, "start": 0.9, "duration": 0.5, "ease": "inQuad" },
+        { "prop": "volume", "to": 0, "start": 2.2, "duration": 0.45, "ease": "outCubic" },
+        { "prop": "cutoff", "from": 1400, "to": 350, "start": 0.9, "duration": 1.8, "ease": "outCubic" }
+      ]
+    }
+  ],
+  "cues": [
+    { "at": 0.25, "sound": "whoomp", "label": "Left torch catches", "velocity": 0.8 },
+    { "at": 0.65, "sound": "whoomp", "label": "Right torch catches", "velocity": 0.7 },
+    { "at": 2.7, "sound": "boom", "label": "Die lands", "note": "C1" },
+    { "at": 2.7, "sound": "crash", "label": "Dust", "velocity": 0.6 },
+    { "at": 2.85, "sound": "chord", "label": "Natural 20", "note": "D3 F#3 A3 D4" },
+    { "at": 4, "sound": "paper", "label": "Banner unrolls", "length": 0.6 },
+    { "at": 4.6, "sound": "boom", "label": "Title stamp", "note": "G1", "length": 0.3, "velocity": 0.55 },
+    { "at": 5.6, "sound": "bell", "label": "Bell", "note": "D2" },
+    { "at": 6.8, "sound": "chime", "label": "Coming soon", "note": "D5 A5", "velocity": 0.45 }
+  ]
+}
