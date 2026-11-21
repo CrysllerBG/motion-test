@@ -8,7 +8,7 @@
 // ?c=<composition>&w=<px>  → window.studio.seek(t) paints the frame for time t.
 import { compile } from './engine/timeline.js';
 import { paintFrame } from './engine/render.js';
-import { loadFonts } from './engine/fonts.js';
+import { prepare } from './engine/prepare.js';
 const q = new URLSearchParams(location.search);
 const canvas = document.getElementById('c'), ctx = canvas.getContext('2d');
 window.studio = {
@@ -18,7 +18,7 @@ window.studio = {
     if (comp.errors.length) throw new Error(comp.errors.join('\n'));
     const W = Number(q.get('w')) || comp.width, H = Math.round(W * comp.height / comp.width);
     canvas.width = W; canvas.height = H;
-    await loadFonts(spec.fonts);
+    await prepare(comp);
     window.studio.seek = t => paintFrame(ctx, comp, t, W, H);
     window.studio.comp = comp;
     return { W, H, duration: comp.duration };

@@ -5,7 +5,7 @@
 // WebCodecs (VideoEncoder) compresses the frames to H.264; mp4-muxer wraps them in an .mp4 file.
 import { compile } from '../engine/timeline.js';
 import { paintFrame } from '../engine/render.js';
-import { loadFonts } from '../engine/fonts.js';
+import { prepare } from '../engine/prepare.js';
 import { Muxer, ArrayBufferTarget } from '../vendor/mp4-muxer-5.2.2.mjs';
 import { renderAudio } from '../engine/audio/offline.js';
 import { hasSound } from '../engine/audio/graph.js';
@@ -52,7 +52,7 @@ export async function exportVideo(spec, { width, fps, quality = 'high', audio = 
   const frames = Math.max(1, Math.round(comp.duration * fps));
   const bitrate = Math.round(width * height * fps * (QUALITY[quality] ?? QUALITY.high));
 
-  await loadFonts(spec.fonts);
+  await prepare(comp);
   const { config, muxCodec } = await pickCodec(width, height, fps, bitrate);
 
   // Sound first: render it offline (much faster than real time), then it's ready to encode.

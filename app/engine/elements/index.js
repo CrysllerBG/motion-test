@@ -9,5 +9,6 @@ import shape from './shape.js';
 import particles from './particles.js';
 import noise from './noise.js';
 import vignette from './vignette.js';
+import d20 from './d20.js';
 export { COMMON_PROPS, BLEND_OP } from './common.js';
-export const ELEMENTS = { background, group, glow, text, line, shape, particles, noise, vignette };
+export const ELEMENTS = { background, group, glow, text, line, shape, particles, noise, vignette, d20 };

@@ -15,7 +15,8 @@ const STARTERS = {
   shape: { props: { shape: 'rect', width: 20, height: 12, fill: '#6ee7b7' } },
   particles: { props: { preset: 'embers', y: 85 } },
   noise: {},
-  vignette: {}
+  vignette: {},
+  d20: { props: { y: 45, size: 18, tumble: 1 }, animate: [{ prop: 'tumble', from: 0, to: 1, start: 0, duration: 2, ease: 'outCubic' }] }
 };
 
 export function renderLayers(root, { store, selected, select }) {

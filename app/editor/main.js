@@ -1,5 +1,5 @@
 // Motion Studio editor: wires the store (spec + undo), the player, the panels and the server.
-import { loadFonts } from '../engine/fonts.js';
+import { prepare } from '../engine/prepare.js';
 import { Player } from './player.js';
 import { buildTimeline } from './timeline-ui.js';
 import { createStore, findLayer } from './store.js';
@@ -49,8 +49,9 @@ function onChange({ source, structure }) {
   if (source !== 'inspector' || structure) rebuildInspector();
   if (structure || ['load', 'undo', 'redo', 'disk'].includes(source)) renderLayers($('layers'), { store, selected, select });
 
-  const key = JSON.stringify(s.spec.fonts || []);
-  if (key !== fontsKey) { fontsKey = key; loadFonts(s.spec.fonts).then(() => player.invalidate()); }
+  // Fonts and (for 3D layers) Three.js must be loaded before frames come out right
+  const key = JSON.stringify([s.spec.fonts || [], s.comp.nodes.map(n => [n.type, n.base.font, n.base.weight, n.base.italic])]);
+  if (key !== fontsKey) { fontsKey = key; prepare(s.comp).then(() => player.invalidate()); }
   $('scrub').max = 1000;
   updateSaveState();
   player.invalidate();

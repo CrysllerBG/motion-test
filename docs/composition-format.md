@@ -129,6 +129,29 @@ motion:
 - Export renders the sound offline with every cue at its exact time, and puts it in the MP4 as
   AAC (Opus in browsers without an AAC encoder).
 
+## 3D layers
+
+A 3D layer is a layer like any other: it sits in the layer list, 2D layers can be behind or in
+front of it, and opacity, blend and blur work on it. Its picture is rendered by Three.js and
+copied into the frame at its place in the stack.
+
+Describing 3D shapes in JSON isn't practical, so each 3D layer **type** is a code module
+(`app/engine/elements/d20.js`) whose knobs are ordinary props. The first one is `d20`:
+
+```json
+{ "id": "die", "type": "d20", "label": "D20", "props": { "y": 42, "size": 20, "face": 20 },
+  "animate": [
+    { "prop": "tumble", "from": 0, "to": 1, "start": 0.3, "duration": 2.2, "ease": "outCubic" },
+    { "prop": "wobble", "from": 14, "to": 0, "start": 2.5, "duration": 0.8, "ease": "outBounce" },
+    { "prop": "glow", "from": 0, "to": 1, "start": 2.5, "duration": 0.4 }
+  ] }
+```
+
+`tumble` from 0 to 1 rolls the die: it spins `turns` times and comes to rest showing `face`. The
+easing shapes the roll (`outCubic` = fast spin that slows down). Its shadow falls on whatever is
+behind it (`shadow` sets how dark). A new 3D look (another object, a scene) is a new module in
+`app/engine/elements/` that uses `app/engine/three/renderer.js`.
+
 ## Recipes
 
 | effect | how |
@@ -288,6 +311,29 @@ Overrides: `opacity` = `0.08`, `blend` = `"overlay"`.
 | `outer` | number 0 … 150 | `62` | full-dark radius, % of width |
 | `strength` | number 0 … 1 | `0.7` |  |
 
+### `d20`
+
+| prop | type | default | notes |
+|---|---|---|---|
+| `x` | number -50 … 150 | `50` | centre, % of width |
+| `y` | number -50 … 150 | `45` | centre, % of height |
+| `size` | number 1 … 80 | `18` | diameter, % of width |
+| `tumble` | number 0 … 1 | `1` | 0 = spinning in the air, 1 = landed. Animate it to roll the die |
+| `turns` | number 0 … 20 | `3` | how many times it spins before landing |
+| `face` | number 1 … 20 | `20` | the number it lands on |
+| `wobble` | number -45 … 45 | `0` | rock forward/back, degrees (animate to settle after landing) |
+| `roll` | number -180 … 180 | `0` | turn the die in the picture plane, degrees |
+| `depth` | number -5 … 5 | `0` | toward (+) / away from (−) the camera |
+| `glow` | number 0 … 1 | `0` | the landed number lights up |
+| `glowColor` | color | `"#ffc770"` |  |
+| `color` | color | `"#7d1016"` | resin colour |
+| `ink` | color | `"#e8c477"` | number colour |
+| `font` | font | `"IM Fell English"` |  |
+| `keyLight` | number 0 … 5 | `1.6` | main light from the front-left |
+| `rimLight` | number 0 … 3 | `0.55` | cool edge light from behind |
+| `warmLight` | number 0 … 5 | `0.6` | warm side lights, like torches |
+| `shadow` | number 0 … 1 | `0.5` | darkness of the shadow on the wall behind |
+
 ### Easings
 
 `linear` · `inQuad` · `outCubic` · `inOutQuad` · `outBounce` · `inCubic` · `inOutCubic` · `outExpo` · `outBack` · `step`
@@ -352,6 +398,6 @@ Errors point at the exact spot, e.g. `layers[3].animate[1].ease: unknown easing 
 
 - Masks / clipping: a texture can't be confined to the inside of a shape yet.
 - Images, SVG files and video as layers.
-- 3D (Three.js) layers.
+- More 3D layer types (only `d20` so far).
 - A "shake" that only happens during a time window (waves run for the whole piece).
 - A dedicated flame element (the reference trailer's torches are hand-drawn bezier flames).
